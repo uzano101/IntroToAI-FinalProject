@@ -1,14 +1,14 @@
 import numpy as np
 import random
 from collections import deque
-from tensorflow.keras.models import Sequential
+from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.optimizers import Adam
-import BaseAgentRL
+from BaseAgentRL import BaseAgentRL
 
 
 class DQLAgent(BaseAgentRL):
-    def __init__(self, state_size, action_size):
+    def __init__(self, state_size = 209, action_size = 4):
         """
         Initializes the DQLAgent with the necessary parameters and settings for neural network training.
         Creates a neural network model that predicts the best action based on the game state.
@@ -39,7 +39,7 @@ class DQLAgent(BaseAgentRL):
             Dense(120, activation='relu'),
             Dense(self.action_size, activation='linear')
         ])
-        model.compile(loss='mse', optimizer=Adam(lr=self.learning_rate))
+        model.compile(loss='mse', optimizer=Adam(learning_rate=self.learning_rate))
         return model
 
     def choose_action(self, state):
@@ -61,7 +61,7 @@ class DQLAgent(BaseAgentRL):
         act_values = self.model.predict(state.reshape(1, -1))
         return np.argmax(act_values[0])
 
-    def update_agent(self, state, action, reward, next_state, done):
+    def update_agent(self, state, next_state, action, reward,done):
         state = self.convarte_state_to_vector(state)
         next_state = self.convarte_state_to_vector(next_state)
         self.Qvalue.append((state, action, reward, next_state, done))
@@ -94,7 +94,7 @@ class DQLAgent(BaseAgentRL):
         """
         return np.array([[1 if cell != 0 else 0 for cell in row] for row in grid]).flatten()
 
-    def encode_tetrimino(self, tetrimino_grid, x_pos, y_pos,rotation, grid_width, grid_height):
+    def encode_tetrimino(self, tetrimino_grid, x_pos, y_pos, shape, grid_width, grid_height):
         """
         Encodes the Tetrimino's grid and position into a normalized form suitable for neural network input.
 
@@ -112,9 +112,11 @@ class DQLAgent(BaseAgentRL):
 
         # Flatten the Tetrimino grid
         flat_tetrimino = np.array(tetrimino_grid).flatten()
+        if len(flat_tetrimino) < 6:
+            flat_tetrimino = np.concatenate((flat_tetrimino, np.zeros(6 - len(flat_tetrimino))))
 
         # Combine normalized position and flattened Tetrimino grid into a single array
-        encoded_tetrimino = np.concatenate(([normalized_x, normalized_y, rotation], flat_tetrimino))
+        encoded_tetrimino = np.concatenate(([normalized_x, normalized_y, shape], flat_tetrimino))
 
         return encoded_tetrimino
 
@@ -128,11 +130,11 @@ class DQLAgent(BaseAgentRL):
         """
         grid = state.grid
         tetrimino = state.current_tetrimino
-        x_pos = state.tetrimino_x
-        y_pos = state.tetrimino_y
-        rotation = state.tetrimino_rotation
+        tetrimino_x_pos = tetrimino["x"]
+        tetrimino_y_pos = tetrimino["y"]
+        tetrimino_shape = ord(tetrimino["shape"])
         grid_state = self.encode_grid(grid)
-        current_tetrimino_state = self.encode_tetrimino(tetrimino["matrix"],x_pos,y_pos,rotation,len(grid),len(grid[0]))
+        current_tetrimino_state = self.encode_tetrimino(tetrimino["matrix"],tetrimino_x_pos,tetrimino_y_pos,tetrimino_shape,len(grid),len(grid[0]))
         # TODO : check if needed
         # next_tetrimino_state = self.encode_tetrimino(self.game.next_tetrimino)
-        return np.concatenate([grid_state, current_tetrimino_state, next_tetrimino_state])
+        return np.concatenate([grid_state, current_tetrimino_state])
