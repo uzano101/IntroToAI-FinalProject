@@ -288,16 +288,16 @@ class Tetris:
         pygame.quit()
 
 class State:
-    def __init__(self, grid, current_tetrimino, tetrimino_x, tetrimino_y, rotation):
+    def __init__(self, grid, current_tetrimino, tetrimino_x, tetrimino_y, tetrimino_rotation):
         # Copy the grid to avoid altering the original one
         self.grid = [row[:] for row in grid]
         self.current_tetrimino = current_tetrimino
         self.tetrimino_x = tetrimino_x
         self.tetrimino_y = tetrimino_y
-        self.rotation = rotation
+        self.tetrimino_rotation = tetrimino_rotation
 
     def __repr__(self):
-        return f"State(tetrimino={self.current_tetrimino}, x={self.tetrimino_x}, y={self.tetrimino_y}, rotation={self.rotation})"
+        return f"State(tetrimino={self.current_tetrimino}, x={self.tetrimino_x}, y={self.tetrimino_y}, rotation={self.tetrimino_rotation})"
 
 
 if __name__ == '__main__':
