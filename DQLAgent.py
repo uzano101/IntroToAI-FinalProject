@@ -74,7 +74,7 @@ class DQLAgent(BaseAgentRL):
         print(finish_time - start_time)
 
 
-    def train(self, batch_size=32):
+    def train(self, batch_size=5):
         """
         Trains the neural network on a batch of experiences sampled from the memory.
         Updates the network to better predict the Q-values using the Bellman equation.

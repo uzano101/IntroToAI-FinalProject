@@ -61,7 +61,7 @@ class Tetris:
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption('Tetris')
 
-        # self.clock = pygame.time.Clock()
+        self.clock = pygame.time.Clock()
         self.font = pygame.font.Font(None, 36)
         self.agent = agent
         self.reset_game()
@@ -75,8 +75,8 @@ class Tetris:
         self.score = 0
         self.level = 1
         self.lines_cleared = 0
-        self.speed = 100000000000  # Milliseconds per fall
-        # self.last_fall_time = pygame.time.get_ticks()
+        self.speed = 200  # Milliseconds per fall
+        self.last_fall_time = pygame.time.get_ticks()
 
         self.next_tetrimino = self.get_random_tetrimino()
         self.spawn_tetrimino()
@@ -225,11 +225,11 @@ class Tetris:
         lines_text = self.font.render(f'Lines: {self.lines_cleared}', True, WHITE)
         self.screen.blit(lines_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 300))
 
-    # def updateGame(self):
-    #     current_time = pygame.time.get_ticks()
-    #     if current_time - self.last_fall_time > self.speed:
-    #         self.move_tetrimino(0, 1)
-    #         self.last_fall_time = current_time
+    def updateGame(self):
+        current_time = pygame.time.get_ticks()
+        if current_time - self.last_fall_time > self.speed:
+            self.move_tetrimino(0, 1)
+            self.last_fall_time = current_time
 
 
     # def handle_events(self):
@@ -256,7 +256,6 @@ class Tetris:
                 return True
         self.current_action = self.agent.choose_action(self.current_state)
         self.previous_state = self.current_state
-        self.move_tetrimino(0, 1)
         if self.current_action == 0:
             self.move_tetrimino(-1, 0)
         elif self.current_action == 1:
@@ -304,7 +303,7 @@ class Tetris:
                                 self.calculate_reward(), self.game_over)
 
     def refresh_game(self):
-        # self.updateGame()
+        self.updateGame()
         self.screen.fill(BLACK)
         self.draw_frame()
         self.draw_grid()
@@ -312,7 +311,7 @@ class Tetris:
         self.draw_ui()
         self.draw_next_tetrimino()
         pygame.display.flip()
-        # self.clock.tick(60)
+        self.clock.tick(60)
 
     def run(self):
         while not self.game_over:
@@ -354,54 +353,117 @@ class Tetris:
         pygame.quit()
 
     def calculate_reward(self):
-        # Extract game state parameters
-        lines_cleared = self.lines_cleared
-        holes = self.count_holes()
-        bumpiness, total_height, max_height, min_height, max_bumpiness = self.calculate_terrain_features()
+        # Store the current state to avoid modifying the game
+        temp_grid = [row[:] for row in self.grid]
+        temp_tetrimino = self.current_tetrimino.copy()
 
-        # Assign weights to each parameter based on their impact (customize these as needed)
-        weights = {
-            'lines_cleared': 10.0,  # Positive reward for clearing lines
-            'holes': -4.0,  # Penalty for each hole
-            'bumpiness': -2.0,  # Penalty for bumpiness
-            'total_height': -1.0,  # Penalty for higher aggregate height
-            'max_height': -1.5,  # Higher penalty for max column height
-            'max_bumpiness': -1.0  # Penalty for the maximum bumpiness
-        }
+        # Simulate placing the current tetromino in the grid without locking it
+        simulated_grid = self.simulate_tetrimino_placement(temp_grid, temp_tetrimino)
 
-        # Calculate the reward based on current state and weights
-        reward = (
-                weights['lines_cleared'] * lines_cleared +
-                weights['holes'] * holes +
-                weights['bumpiness'] * bumpiness +
-                weights['total_height'] * total_height +
-                weights['max_height'] * max_height +
-                weights['max_bumpiness'] * max_bumpiness
-        )
+        # Calculate penalties and rewards based on the simulated state
+        empty_spaces_created = self.count_holes(simulated_grid) - self.count_holes(temp_grid)
+        fit_penalty = self.calculate_fit_penalty(simulated_grid)
+        max_tetromino_height = self.calculate_max_tetromino_height(temp_tetrimino)
 
-        # Adjust reward based on the game-ending condition
-        if self.game_over:
-            reward -= 100  # Large penalty for ending the game
+        lines_cleared_now = self.lines_cleared  # Assume lines cleared remains the same for simplicity
 
+        # Calculate penalties and rewards
+        empty_space_penalty = -2 * empty_spaces_created  # Penalty for creating more empty spaces
+        height_penalty = -10 * max_tetromino_height
+        line_clear_reward = self.calculate_line_clear_reward(lines_cleared_now)
+
+        # Combine the rewards and penalties
+        reward = fit_penalty + empty_space_penalty + height_penalty + line_clear_reward
         return reward
 
-    def count_holes(self):
-        holes = 0
+
+    def calculate_max_tetromino_height(self, tetrimino):
+        """Calculate the height of the topmost block of the tetromino."""
+        # Determine the highest y-value (row) that the tetromino occupies after being placed
+        matrix = tetrimino['matrix']
+        y_pos = tetrimino['y']
+
+        max_height = 0
+        for dy, row in enumerate(matrix):
+            for dx, cell in enumerate(row):
+                if cell:
+                    max_height = max(max_height, y_pos + dy)
+
+        # The distance from this maximum height to the ground (bottom of the grid)
+        distance_to_ground = GRID_HEIGHT - max_height
+        return distance_to_ground
+
+    def simulate_tetrimino_placement(self, grid, tetrimino):
+        """Simulates placing a tetromino on the grid without locking it."""
+        matrix = tetrimino['matrix']
+        x = tetrimino['x']
+        y = tetrimino['y']
+
+        for dy, row in enumerate(matrix):
+            for dx, cell in enumerate(row):
+                if cell:
+                    grid[y + dy][x + dx] = tetrimino['color']
+
+        return grid
+
+    def calculate_fit_penalty(self, grid):
+        """Penalize based on how well the tetromino fits into the current grid."""
+        gaps = 0
+        for y in range(1, GRID_HEIGHT):  # Start from 1 to avoid counting the top row
+            for x in range(GRID_WIDTH):
+                if grid[y][x] == 0 and grid[y - 1][x] != 0:
+                    gaps += 1
+        # Penalize for every gap that appears in the grid
+        return -5 * gaps
+
+    def calculate_line_clear_reward(self, lines_cleared):
+        """Calculates the reward based on the number of lines cleared."""
+        if lines_cleared == 1:
+            return 100
+        elif lines_cleared == 2:
+            return 300
+        elif lines_cleared == 3:
+            return 500
+        elif lines_cleared == 4:
+            return 800
+        else:
+            return 0
+
+    def calculate_placement_height(self, grid, tetrimino):
+        """Calculate the height penalty based on how high the tetromino was placed."""
+        min_height = GRID_HEIGHT
         for x in range(GRID_WIDTH):
-            block_found = False
             for y in range(GRID_HEIGHT):
-                if self.grid[y][x]:
-                    block_found = True
-                elif block_found and not self.grid[y][x]:
-                    holes += 1
-        return holes
+                if grid[y][x] != 0:
+                    min_height = min(min_height, y)
+                    break
 
+        # Height penalty based on the distance from the lowest empty row to the ground
+        placement_height = GRID_HEIGHT - min_height
+        return placement_height
 
-    def calculate_terrain_features(self):
+    def count_holes(self, grid=None):
+        """Calculate the number of empty spaces (holes) created by the placement of the tetromino."""
+        if grid is None:
+            grid = self.grid  # Use the current game grid if no grid is provided
+
+        total_empty_spaces = 0
+
+        for y in range(GRID_HEIGHT):
+            for x in range(GRID_WIDTH):
+                if grid[y][x] == 0:
+                    total_empty_spaces += 1
+
+        return total_empty_spaces
+
+    def calculate_terrain_features(self, grid=None):
+        if grid is None:
+            grid = self.grid  # Use the current game grid if no grid is provided
+
         heights = [0] * GRID_WIDTH
         for x in range(GRID_WIDTH):
             for y in range(GRID_HEIGHT):
-                if self.grid[y][x]:
+                if grid[y][x]:
                     heights[x] = GRID_HEIGHT - y
                     break
 
@@ -411,8 +473,7 @@ class Tetris:
         bumpiness = sum(abs(heights[i] - heights[i + 1]) for i in range(GRID_WIDTH - 1))
         max_bumpiness = max(abs(heights[i] - heights[i + 1]) for i in range(GRID_WIDTH - 1))
 
-        return bumpiness, total_height, max_height, min_height, max_bumpiness
-
+        return bumpiness, total_height, max_height, min_height,max_bumpiness
 
 class State:
     def __init__(self, grid, current_tetrimino):
