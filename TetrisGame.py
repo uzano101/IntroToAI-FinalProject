@@ -210,7 +210,7 @@ class Tetris:
 
         # Draw next piece label
         next_text = self.font.render('Next:', True, WHITE)
-        self.screen.blit(next_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 130))
+        self.screen.blit(next_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 120))
 
         # Draw lines cleared
         lines_text = self.font.render(f'Lines: {self.lines_cleared}', True, WHITE)
