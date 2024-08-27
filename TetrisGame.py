@@ -1,3 +1,5 @@
+import threading
+
 import pygame
 import random
 import time
@@ -59,7 +61,7 @@ class Tetris:
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption('Tetris')
 
-        self.clock = pygame.time.Clock()
+        # self.clock = pygame.time.Clock()
         self.font = pygame.font.Font(None, 36)
         self.agent = agent
         self.reset_game()
@@ -73,8 +75,8 @@ class Tetris:
         self.score = 0
         self.level = 1
         self.lines_cleared = 0
-        self.speed = 500  # Milliseconds per fall
-        self.last_fall_time = pygame.time.get_ticks()
+        self.speed = 100000000000  # Milliseconds per fall
+        # self.last_fall_time = pygame.time.get_ticks()
 
         self.next_tetrimino = self.get_random_tetrimino()
         self.spawn_tetrimino()
@@ -223,11 +225,11 @@ class Tetris:
         lines_text = self.font.render(f'Lines: {self.lines_cleared}', True, WHITE)
         self.screen.blit(lines_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 300))
 
-    def updateGame(self):
-        current_time = pygame.time.get_ticks()
-        if current_time - self.last_fall_time > self.speed:
-            self.move_tetrimino(0, 1)
-            self.last_fall_time = current_time
+    # def updateGame(self):
+    #     current_time = pygame.time.get_ticks()
+    #     if current_time - self.last_fall_time > self.speed:
+    #         self.move_tetrimino(0, 1)
+    #         self.last_fall_time = current_time
 
 
     # def handle_events(self):
@@ -254,6 +256,7 @@ class Tetris:
                 return True
         self.current_action = self.agent.choose_action(self.current_state)
         self.previous_state = self.current_state
+        self.move_tetrimino(0, 1)
         if self.current_action == 0:
             self.move_tetrimino(-1, 0)
         elif self.current_action == 1:
@@ -296,23 +299,59 @@ class Tetris:
             matrix = [list(row) for row in zip(*matrix[::-1])]
         return matrix
 
+    def update_agent_thread(self):
+        self.agent.update_agent(self.previous_state, self.current_state, self.current_action,
+                                self.calculate_reward(), self.game_over)
+
+    def refresh_game(self):
+        # self.updateGame()
+        self.screen.fill(BLACK)
+        self.draw_frame()
+        self.draw_grid()
+        self.draw_tetrimino()
+        self.draw_ui()
+        self.draw_next_tetrimino()
+        pygame.display.flip()
+        # self.clock.tick(60)
+
     def run(self):
         while not self.game_over:
+            # Update game state before threading
             self.current_state = self.get_current_state()  # Update the current state
             self.game_over = self.handle_agent_events()
-            self.agent.update_agent(self.previous_state, self.current_state, self.current_action,
-                                    self.calculate_reward(), self.game_over)
-            self.updateGame()
-            self.screen.fill(BLACK)
-            self.draw_frame()
-            self.draw_grid()
-            self.draw_tetrimino()
-            self.draw_ui()
-            self.draw_next_tetrimino()
-            pygame.display.flip()
-            self.clock.tick(60)
-        pygame.quit()
 
+            # Create threads
+            agent_thread = threading.Thread(target=self.update_agent_thread)
+            game_thread = threading.Thread(target=self.refresh_game())
+
+            # Start threads
+            agent_thread.start()
+            game_thread.start()
+
+            # Wait for both threads to complete
+            agent_thread.join()
+            game_thread.join()
+
+        pygame.quit()
+    def run(self):
+        while not self.game_over:
+            # 1. Update game state
+            self.current_state = self.get_current_state()
+
+            # 2. Handle agent's decision
+            self.game_over = self.handle_agent_events()  # Agent decides action here
+
+            # 3. Render immediately after handling agent events
+            self.refresh_game()  # Direct call to refresh_game without threading
+            self.update_agent_thread()
+
+            # Thread handling may not be necessary if immediate rendering is required after every agent action.
+            # If performance or responsiveness is an issue, consider optimizing handle_agent_events and refresh_game.
+
+            # Delay here if needed to maintain consistent frame rate (optional)
+            pygame.time.delay(20)  # Delay to simulate frame rate control
+
+        pygame.quit()
 
     def calculate_reward(self):
         # Extract game state parameters
@@ -345,7 +384,6 @@ class Tetris:
             reward -= 100  # Large penalty for ending the game
 
         return reward
-
 
     def count_holes(self):
         holes = 0

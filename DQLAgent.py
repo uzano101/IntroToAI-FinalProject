@@ -1,3 +1,6 @@
+import time
+from datetime import datetime
+
 import numpy as np
 import random
 from collections import deque
@@ -62,10 +65,14 @@ class DQLAgent(BaseAgentRL):
         return np.argmax(act_values[0])
 
     def update_agent(self, state, next_state, action, reward,done):
+        start_time = datetime.now()
         state = self.convarte_state_to_vector(state)
         next_state = self.convarte_state_to_vector(next_state)
         self.Qvalue.append((state, action, reward, next_state, done))
         self.train()
+        finish_time = datetime.now()
+        print(finish_time - start_time)
+
 
     def train(self, batch_size=32):
         """
