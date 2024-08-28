@@ -61,6 +61,7 @@ class Tetris:
         # self.clock = pygame.time.Clock()
         self.font = pygame.font.Font(None, 36)
         self.agent = agent
+        self.game_counter = 0
         self.reset_game()
         self.previous_state = None
         self.current_state = None
@@ -74,7 +75,8 @@ class Tetris:
         self.lines_cleared = 0
         self.speed = 200  # Milliseconds per fall
         # self.last_fall_time = pygame.time.get_ticks()
-
+        self.agent.train()
+        self.game_counter = self.game_counter+1
         self.next_tetrimino = self.get_random_tetrimino()
         self.spawn_tetrimino()
         self.current_state = self.get_current_state()  # Save the current state
@@ -218,6 +220,9 @@ class Tetris:
         next_text = self.font.render('Next:', True, WHITE)
         self.screen.blit(next_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 130))
 
+        game_counter = self.font.render(f'Games:{self.game_counter}', True, WHITE)
+        self.screen.blit(game_counter, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 200))
+
         # Draw lines cleared
         lines_text = self.font.render(f'Lines: {self.lines_cleared}', True, WHITE)
         self.screen.blit(lines_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 300))
@@ -285,31 +290,39 @@ class Tetris:
     # def calculate_reward(self):
     #     temp_grid, temp_tetrimino_pos = self.simulate_drop()
 
-
     def calculate_reward(self):
-        """Calculate the reward for the agent's action based on the placement of the Tetrimino."""
+        """Calculate the reward for the agent's action based solely on the height of the Tetrimino placement."""
         temp_grid, (final_x, final_y) = self.simulate_drop()  # Get the simulated final state
 
-        # Calculate the height penalty
-        height_penalty = -final_y
+        # Reward is inversely proportional to the height of the Tetrimino's final position
+        reward = -1* final_y  # The lower the Tetrimino, the higher the reward (negative because y increases downward)
 
-        # Calculate empty cell penalties
-        empty_cell_penalty = 0
-        for y in range(final_y, GRID_HEIGHT):
-            if any(cell == 0 for cell in temp_grid[y]):
-                empty_cell_penalty -= 1  # Penalize each row with empty cells below the Tetrimino
+        return reward
 
-        # Calculate line completion reward
-        line_completion_reward = 0
-        lines_cleared = self.check_lines(temp_grid)  # Method to check how many lines would be cleared
-        if lines_cleared > 0:
-            line_completion_reward = lines_cleared / GRID_HEIGHT  # Reward for clearing lines, more for clearing multiple lines
-
-        # Calculate the total reward, keeping it within the range of -1 to 1
-        total_reward = (height_penalty*5 + empty_cell_penalty*3 + line_completion_reward *20)
-        # total_reward = max(min(total_reward, 1), -1)  # Ensure the reward is within the range of -1 to 1
-
-        return total_reward
+    # def calculate_reward(self):
+    #     """Calculate the reward for the agent's action based on the placement of the Tetrimino."""
+    #     temp_grid, (final_x, final_y) = self.simulate_drop()  # Get the simulated final state
+    #
+    #     # Calculate the height penalty
+    #     height_penalty = -final_y
+    #
+    #     # Calculate empty cell penalties
+    #     empty_cell_penalty = 0
+    #     for y in range(final_y, GRID_HEIGHT):
+    #         if any(cell == 0 for cell in temp_grid[y]):
+    #             empty_cell_penalty -= 1  # Penalize each row with empty cells below the Tetrimino
+    #
+    #     # Calculate line completion reward
+    #     line_completion_reward = 0
+    #     lines_cleared = self.check_lines(temp_grid)  # Method to check how many lines would be cleared
+    #     if lines_cleared > 0:
+    #         line_completion_reward = lines_cleared / GRID_HEIGHT  # Reward for clearing lines, more for clearing multiple lines
+    #
+    #     # Calculate the total reward, keeping it within the range of -1 to 1
+    #     total_reward = (height_penalty*5 + empty_cell_penalty*3 + line_completion_reward *20)
+    #     # total_reward = max(min(total_reward, 1), -1)  # Ensure the reward is within the range of -1 to 1
+    #
+    #     return total_reward
 
     def check_lines(self, grid):
         """Check how many lines can be cleared in the given grid."""

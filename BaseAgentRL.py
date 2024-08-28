@@ -13,3 +13,7 @@ class BaseAgentRL(ABC):
     @abstractmethod
     def choose_action(self, state):
         pass
+
+    @abstractmethod
+    def train(self,batch_size=10):
+        pass

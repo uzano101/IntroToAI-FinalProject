@@ -23,7 +23,7 @@ class DQLAgent(BaseAgentRL):
         super().__init__(state_size, action_size)
         self.Qvalue = deque(maxlen=2000)
         self.gamma = 0.95  # Discount factor for future rewards
-        self.epsilon = 1.0  # Initial exploration rate
+        self.epsilon = 0.995 # Initial exploration rate
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
         self.learning_rate = 0.001
@@ -65,16 +65,12 @@ class DQLAgent(BaseAgentRL):
         return np.argmax(act_values[0])
 
     def update_agent(self, state, next_state, action, reward,done):
-        start_time = datetime.now()
         state = self.convarte_state_to_vector(state)
         next_state = self.convarte_state_to_vector(next_state)
         self.Qvalue.append((state, action, reward, next_state, done))
-        self.train()
-        finish_time = datetime.now()
-        print(finish_time - start_time)
+        # self.train()
 
-
-    def train(self, batch_size=5):
+    def train(self, batch_size=10):
         """
         Trains the neural network on a batch of experiences sampled from the memory.
         Updates the network to better predict the Q-values using the Bellman equation.
