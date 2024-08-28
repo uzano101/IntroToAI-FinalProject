@@ -7,11 +7,11 @@ class BaseAgentRL(ABC):
         self.action_size = action_size
 
     @abstractmethod
-    def update_agent(self, state, action, reward, next_state, done):
+    def update_agent(self, state, reward, next_state, done):
         pass
 
     @abstractmethod
-    def choose_action(self, state):
+    def choose_best_final_state(self, current_state, possible_final_states):
         pass
 
     @abstractmethod

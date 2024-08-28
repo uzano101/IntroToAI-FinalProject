@@ -58,7 +58,7 @@ class Tetris:
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption('Tetris')
 
-        # self.clock = pygame.time.Clock()
+        self.clock = pygame.time.Clock()
         self.font = pygame.font.Font(None, 36)
         self.agent = agent
         self.game_counter = 0
@@ -74,7 +74,7 @@ class Tetris:
         self.level = 1
         self.lines_cleared = 0
         self.speed = 200  # Milliseconds per fall
-        # self.last_fall_time = pygame.time.get_ticks()
+        self.last_fall_time = pygame.time.get_ticks()
         self.agent.train()
         self.game_counter = self.game_counter+1
         self.next_tetrimino = self.get_random_tetrimino()
@@ -158,10 +158,6 @@ class Tetris:
         self.current_state = self.get_current_state()  # Update the current state
         return True
 
-    def hard_drop(self):
-        while self.move_tetrimino(0, 1):
-            pass
-
     def draw_grid(self):
         for y in range(GRID_HEIGHT):
             for x in range(GRID_WIDTH):
@@ -238,18 +234,36 @@ class Tetris:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return True
-        self.current_action = self.agent.choose_action(self.current_state)
+        lock_state = self.agent.choose_best_final_state(self.current_state, self.get_all_lock_states())
         self.previous_state = self.current_state
-        self.move_tetrimino(0,1)
-        if self.current_action == 0:
-            self.move_tetrimino(-1, 0)
-        elif self.current_action == 1:
-            self.move_tetrimino(1, 0)
-        elif self.current_action == 2:
-            self.rotate_tetrimino()
-        elif self.current_action == 3:
-            pass
+        self.set_tetrimino_to_state(lock_state)
+        self.hard_drop()
+        self.current_state = self.get_current_state()
+        # self.move_tetrimino(0,1)
+        # if self.current_action == 0:
+        #     self.move_tetrimino(-1, 0)
+        # elif self.current_action == 1:
+        #     self.move_tetrimino(1, 0)
+        # elif self.current_action == 2:
+        #     self.rotate_tetrimino()
+        # elif self.current_action == 3:
+        #     pass
         return False
+
+    def hard_drop(self):
+        """
+        Drops the current tetrimino straight down to its lowest possible position, updating the display on each drop.
+        """
+        moved = True
+        while moved:
+            # Move the tetrimino down one step
+            moved = self.move_tetrimino(0, 1)
+
+            # Refresh the game display to show the tetrimino moving down
+            self.refresh_game()
+
+            # Optionally, add a short delay to make the movement visually smooth
+            pygame.time.delay(20)
 
     def rotate_matrix(self, matrix, times=1):
         # Rotate the matrix 90 degrees clockwise `times` number of times
@@ -258,7 +272,7 @@ class Tetris:
         return matrix
 
     def update_agent_thread(self):
-        self.agent.update_agent(self.previous_state, self.current_state, self.current_action,
+        self.agent.update_agent(self.previous_state, self.current_state,
                                 self.calculate_reward(), self.game_over)
 
     def refresh_game(self):
@@ -287,8 +301,6 @@ class Tetris:
             self.update_agent_thread()
         pygame.quit()
 
-    # def calculate_reward(self):
-    #     temp_grid, temp_tetrimino_pos = self.simulate_drop()
 
 
     def calculate_reward(self):
@@ -377,6 +389,86 @@ class Tetris:
                         return False
 
         return True
+
+    def get_all_lock_states(self):
+        """
+        Generates all possible lock states for the current tetrimino from the current state.
+        Each lock state is a version of the grid with the tetrimino locked in a valid final position.
+
+        Returns:
+            list of tuples: Each tuple contains a copy of the grid with the tetrimino locked and the corresponding tetrimino information.
+        """
+        lock_states = []
+        initial_tetrimino = self.current_tetrimino.copy()
+        original_matrix = initial_tetrimino['matrix']
+
+        # Try all rotations of the tetrimino
+        for rotation in range(4):
+            rotated_matrix = self.rotate_matrix(original_matrix, times=rotation)
+            temp_tetrimino = initial_tetrimino.copy()
+            temp_tetrimino['matrix'] = rotated_matrix
+
+            # Try all horizontal positions
+            for x in range(0, GRID_WIDTH-len(rotated_matrix[0])):
+                temp_tetrimino['x'] = x
+                temp_tetrimino['y'] = 0  # Start at the top of the grid
+
+                # Find the lowest valid y position for the current x and rotation
+                while not self.check_collision(temp_tetrimino['x'], temp_tetrimino['y'] + 1, rotated_matrix):
+                    temp_tetrimino['y'] += 1
+
+                if self.check_collision(temp_tetrimino['x'], temp_tetrimino['y'] + len(rotated_matrix) -1, rotated_matrix):
+                    # Create a grid copy and lock the tetrimino in place
+                    grid_copy = [row[:] for row in self.grid]
+                    self.lock_tetrimino_in_grid(grid_copy, temp_tetrimino)
+                    lock_states.append(State(grid_copy, temp_tetrimino.copy()))
+
+        return lock_states
+
+    def lock_tetrimino_in_grid(self, grid, tetrimino):
+        """
+        Locks the tetrimino into the provided grid.
+
+        Args:
+            grid (list of list of int): The grid to lock the tetrimino into.
+            tetrimino (dict): The tetrimino to lock, containing its matrix, x, y, and color.
+        """
+        matrix = tetrimino['matrix']
+        x_pos = tetrimino['x']
+        y_pos = tetrimino['y']
+        color = tetrimino['color']
+
+        for y, row in enumerate(matrix):
+            for x, cell in enumerate(row):
+                if cell:
+                    grid_x = x_pos + x
+                    grid_y = y_pos + y
+                    if 0 <= grid_y < GRID_HEIGHT and 0 <= grid_x < GRID_WIDTH:
+                        grid[grid_y][grid_x] = color
+    def set_tetrimino_to_state(self, lock_state):
+        """
+        Adjusts the current tetrimino's orientation and position to match the given lock state.
+
+        Args:
+            lock_state (tuple): A tuple containing a grid and a tetrimino state. The tetrimino state
+                                includes its matrix, x and y positions, and other relevant properties.
+        """
+        # Extract the tetrimino state from the lock_state tuple
+        tetrimino_state = lock_state.current_tetrimino
+
+        # Update the current tetrimino's properties to match the lock state
+        self.current_tetrimino['matrix'] = tetrimino_state['matrix']
+        self.current_tetrimino['x'] = tetrimino_state['x']
+        self.current_tetrimino['y'] = 0
+
+        # Optionally, update color and any other properties
+        self.current_tetrimino['color'] = tetrimino_state.get('color', self.current_tetrimino['color'])
+
+        # # Debug or log information if needed
+        # print(
+        #     f"Updated tetrimino to position ({self.current_tetrimino['x']}, {self.current_tetrimino['y']}) and matrix {self.current_tetrimino['matrix']}.")
+
+
 
 class State:
     def __init__(self, grid, current_tetrimino):
