@@ -70,7 +70,7 @@ class DQLAgent(BaseAgentRL):
         self.Qvalue.append((state, action, reward, next_state, done))
         # self.train()
 
-    def train(self, batch_size=10):
+    def train(self, batch_size=20):
         """
         Trains the neural network on a batch of experiences sampled from the memory.
         Updates the network to better predict the Q-values using the Bellman equation.

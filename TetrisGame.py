@@ -290,39 +290,31 @@ class Tetris:
     # def calculate_reward(self):
     #     temp_grid, temp_tetrimino_pos = self.simulate_drop()
 
+
     def calculate_reward(self):
-        """Calculate the reward for the agent's action based solely on the height of the Tetrimino placement."""
+        """Calculate the reward for the agent's action based on the placement of the Tetrimino."""
         temp_grid, (final_x, final_y) = self.simulate_drop()  # Get the simulated final state
 
-        # Reward is inversely proportional to the height of the Tetrimino's final position
-        reward = -1* final_y  # The lower the Tetrimino, the higher the reward (negative because y increases downward)
+        # Calculate the height penalty
+        height_penalty = -final_y
 
-        return reward
+        # Calculate empty cell penalties
+        empty_cell_penalty = 0
+        for y in range(final_y, GRID_HEIGHT):
+            if any(cell == 0 for cell in temp_grid[y]):
+                empty_cell_penalty -= 1  # Penalize each row with empty cells below the Tetrimino
 
-    # def calculate_reward(self):
-    #     """Calculate the reward for the agent's action based on the placement of the Tetrimino."""
-    #     temp_grid, (final_x, final_y) = self.simulate_drop()  # Get the simulated final state
-    #
-    #     # Calculate the height penalty
-    #     height_penalty = -final_y
-    #
-    #     # Calculate empty cell penalties
-    #     empty_cell_penalty = 0
-    #     for y in range(final_y, GRID_HEIGHT):
-    #         if any(cell == 0 for cell in temp_grid[y]):
-    #             empty_cell_penalty -= 1  # Penalize each row with empty cells below the Tetrimino
-    #
-    #     # Calculate line completion reward
-    #     line_completion_reward = 0
-    #     lines_cleared = self.check_lines(temp_grid)  # Method to check how many lines would be cleared
-    #     if lines_cleared > 0:
-    #         line_completion_reward = lines_cleared / GRID_HEIGHT  # Reward for clearing lines, more for clearing multiple lines
-    #
-    #     # Calculate the total reward, keeping it within the range of -1 to 1
-    #     total_reward = (height_penalty*5 + empty_cell_penalty*3 + line_completion_reward *20)
-    #     # total_reward = max(min(total_reward, 1), -1)  # Ensure the reward is within the range of -1 to 1
-    #
-    #     return total_reward
+        # Calculate line completion reward
+        line_completion_reward = 0
+        lines_cleared = self.check_lines(temp_grid)  # Method to check how many lines would be cleared
+        if lines_cleared > 0:
+            line_completion_reward = lines_cleared / GRID_HEIGHT  # Reward for clearing lines, more for clearing multiple lines
+
+        # Calculate the total reward, keeping it within the range of -1 to 1
+        total_reward = (height_penalty*5 + empty_cell_penalty*3 + line_completion_reward *20)
+        # total_reward = max(min(total_reward, 1), -1)  # Ensure the reward is within the range of -1 to 1
+
+        return total_reward
 
     def check_lines(self, grid):
         """Check how many lines can be cleared in the given grid."""
@@ -397,70 +389,3 @@ if __name__ == '__main__':
     game.run()
 
 
-
-# for save....
-    # def run(self):
-    #     while not self.game_over:
-    #         # Update game state before threading
-    #         self.current_state = self.get_current_state()  # Update the current state
-    #         self.game_over = self.handle_agent_events()
-    #
-    #         # Create threads
-    #         agent_thread = threading.Thread(target=self.update_agent_thread)
-    #         game_thread = threading.Thread(target=self.refresh_game())
-    #
-    #         # Start threads
-    #         agent_thread.start()
-    #         game_thread.start()
-    #
-    #         # Wait for both threads to complete
-    #         agent_thread.join()
-    #         game_thread.join()
-    #
-    #     pygame.quit()
-
-
-    # def handle_events(self):
-    #     for event in pygame.event.get():
-    #         if event.type == pygame.QUIT:
-    #             return False
-    #
-    #         elif event.type == pygame.KEYDOWN:
-    #             if event.key == pygame.K_LEFT:
-    #                 self.move_tetrimino(-1, 0)
-    #             elif event.key == pygame.K_RIGHT:
-    #                 self.move_tetrimino(1, 0)
-    #             # elif event.key == pygame.K_DOWN:
-    #             #     self.move_tetrimino(0, 1)
-    #             elif event.key == pygame.K_UP:
-    #                 self.rotate_tetrimino()
-    #             # elif event.key == pygame.K_SPACE:
-    #             #     self.hard_drop()
-    #     return True
-
-
-    # def get_next_states(self):
-    #     next_states = []
-    #     current_shape = self.current_tetrimino['shape']
-    #     current_matrix = self.current_tetrimino['matrix']
-    #
-    #     # Explore all possible rotations
-    #     for rotation in range(4):
-    #         rotated_matrix = self.rotate_matrix(current_matrix, rotation)
-    #
-    #         # Explore all possible horizontal positions
-    #         for x_pos in range(-len(rotated_matrix[0]) + 1, GRID_WIDTH):
-    #             if not self.check_collision(x_pos, self.current_tetrimino['y'], rotated_matrix):
-    #                 # Create a copy of the grid
-    #                 new_grid = [row[:] for row in self.grid]
-    #
-    #                 # Simulate the tetromino placement in this state
-    #                 for y, row in enumerate(rotated_matrix):
-    #                     for x, cell in enumerate(row):
-    #                         if cell:
-    #                             new_grid[self.current_tetrimino['y'] + y][x_pos + x] = self.current_tetrimino['color']
-    #
-    #                 # Create a new state and add it to the list
-    #                 next_states.append(State(new_grid, current_shape, x_pos, self.current_tetrimino['y'], rotation))
-    #
-    #     return next_states
