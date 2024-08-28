@@ -58,7 +58,7 @@ class Tetris:
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption('Tetris')
 
-        self.clock = pygame.time.Clock()
+        # self.clock = pygame.time.Clock()
         self.font = pygame.font.Font(None, 36)
         self.agent = agent
         self.game_counter = 0
@@ -74,7 +74,7 @@ class Tetris:
         self.level = 1
         self.lines_cleared = 0
         self.speed = 200  # Milliseconds per fall
-        self.last_fall_time = pygame.time.get_ticks()
+        # self.last_fall_time = pygame.time.get_ticks()
         self.agent.train()
         self.game_counter = self.game_counter+1
         self.next_tetrimino = self.get_random_tetrimino()
@@ -263,7 +263,7 @@ class Tetris:
             self.refresh_game()
 
             # Optionally, add a short delay to make the movement visually smooth
-            pygame.time.delay(20)
+            pygame.time.delay(5)
 
     def rotate_matrix(self, matrix, times=1):
         # Rotate the matrix 90 degrees clockwise `times` number of times
@@ -409,7 +409,7 @@ class Tetris:
             temp_tetrimino['matrix'] = rotated_matrix
 
             # Try all horizontal positions
-            for x in range(0, GRID_WIDTH-len(rotated_matrix[0])):
+            for x in range(0, GRID_WIDTH-len(rotated_matrix[0])+1):
                 temp_tetrimino['x'] = x
                 temp_tetrimino['y'] = 0  # Start at the top of the grid
 
