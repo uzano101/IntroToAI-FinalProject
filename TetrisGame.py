@@ -1,8 +1,5 @@
-import threading
-
 import pygame
 import random
-import time
 from DQLAgent import DQLAgent
 pygame.init()
 
@@ -61,7 +58,7 @@ class Tetris:
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption('Tetris')
 
-        self.clock = pygame.time.Clock()
+        # self.clock = pygame.time.Clock()
         self.font = pygame.font.Font(None, 36)
         self.agent = agent
         self.reset_game()
@@ -76,7 +73,7 @@ class Tetris:
         self.level = 1
         self.lines_cleared = 0
         self.speed = 200  # Milliseconds per fall
-        self.last_fall_time = pygame.time.get_ticks()
+        # self.last_fall_time = pygame.time.get_ticks()
 
         self.next_tetrimino = self.get_random_tetrimino()
         self.spawn_tetrimino()
@@ -225,11 +222,189 @@ class Tetris:
         lines_text = self.font.render(f'Lines: {self.lines_cleared}', True, WHITE)
         self.screen.blit(lines_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 300))
 
-    def updateGame(self):
-        current_time = pygame.time.get_ticks()
-        if current_time - self.last_fall_time > self.speed:
-            self.move_tetrimino(0, 1)
-            self.last_fall_time = current_time
+    # def updateGame(self):
+    #     current_time = pygame.time.get_ticks()
+    #     if current_time - self.last_fall_time > self.speed:
+    #         self.move_tetrimino(0, 1)
+    #         self.last_fall_time = current_time
+
+
+    def handle_agent_events(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return True
+        self.current_action = self.agent.choose_action(self.current_state)
+        self.previous_state = self.current_state
+        self.move_tetrimino(0,1)
+        if self.current_action == 0:
+            self.move_tetrimino(-1, 0)
+        elif self.current_action == 1:
+            self.move_tetrimino(1, 0)
+        elif self.current_action == 2:
+            self.rotate_tetrimino()
+        elif self.current_action == 3:
+            pass
+        return False
+
+    def rotate_matrix(self, matrix, times=1):
+        # Rotate the matrix 90 degrees clockwise `times` number of times
+        for _ in range(times):
+            matrix = [list(row) for row in zip(*matrix[::-1])]
+        return matrix
+
+    def update_agent_thread(self):
+        self.agent.update_agent(self.previous_state, self.current_state, self.current_action,
+                                self.calculate_reward(), self.game_over)
+
+    def refresh_game(self):
+        # self.updateGame()
+        self.screen.fill(BLACK)
+        self.draw_frame()
+        self.draw_grid()
+        self.draw_tetrimino()
+        self.draw_ui()
+        self.draw_next_tetrimino()
+        pygame.display.flip()
+        # self.clock.tick(60)
+
+
+
+    def run(self):
+        while not self.game_over:
+            # 1. Update game state
+            self.current_state = self.get_current_state()
+
+            # 2. Handle agent's decision
+            self.game_over = self.handle_agent_events()  # Agent decides action here
+
+            # 3. Render immediately after handling agent events
+            self.refresh_game()  # Direct call to refresh_game without threading
+            self.update_agent_thread()
+        pygame.quit()
+
+    # def calculate_reward(self):
+    #     temp_grid, temp_tetrimino_pos = self.simulate_drop()
+
+
+    def calculate_reward(self):
+        """Calculate the reward for the agent's action based on the placement of the Tetrimino."""
+        temp_grid, (final_x, final_y) = self.simulate_drop()  # Get the simulated final state
+
+        # Calculate the height penalty
+        height_penalty = -final_y
+
+        # Calculate empty cell penalties
+        empty_cell_penalty = 0
+        for y in range(final_y, GRID_HEIGHT):
+            if any(cell == 0 for cell in temp_grid[y]):
+                empty_cell_penalty -= 1  # Penalize each row with empty cells below the Tetrimino
+
+        # Calculate line completion reward
+        line_completion_reward = 0
+        lines_cleared = self.check_lines(temp_grid)  # Method to check how many lines would be cleared
+        if lines_cleared > 0:
+            line_completion_reward = lines_cleared / GRID_HEIGHT  # Reward for clearing lines, more for clearing multiple lines
+
+        # Calculate the total reward, keeping it within the range of -1 to 1
+        total_reward = (height_penalty*5 + empty_cell_penalty*3 + line_completion_reward *20)
+        # total_reward = max(min(total_reward, 1), -1)  # Ensure the reward is within the range of -1 to 1
+
+        return total_reward
+
+    def check_lines(self, grid):
+        """Check how many lines can be cleared in the given grid."""
+        return sum(1 for row in grid if 0 not in row)
+
+    def simulate_drop(self):
+        # Create a temporary grid by copying the current grid
+        temp_grid = [row[:] for row in self.grid]
+        temp_tetrimino = self.current_tetrimino.copy()
+
+        # Simulate the drop
+        while True:
+            new_y = temp_tetrimino['y'] + 1  # Move one row down
+            if self.is_valid_position(temp_grid, temp_tetrimino['x'], new_y, temp_tetrimino['matrix']):
+                temp_tetrimino['y'] = new_y
+            else:
+                break  # Stop if the new position is not valid
+
+        # Find the highest block position in the Tetrimino after the drop
+        highest_point = None  # To store (x, y) of the highest block
+        for y, row in enumerate(temp_tetrimino['matrix']):
+            for x, cell in enumerate(row):
+                if cell:
+                    grid_y = temp_tetrimino['y'] + y
+                    if highest_point is None or grid_y < highest_point[1]:
+                        highest_point = (temp_tetrimino['x'] + x, grid_y)
+
+        return temp_grid, highest_point
+
+    def is_valid_position(self, grid, x, y, matrix):
+        """
+        Check if a Tetrimino can be placed at the specified position within the grid.
+
+        Args:
+            grid (list of list of int): The current state of the game grid.
+            x (int): The x-coordinate (column) on the grid where the Tetrimino's top-left corner is to be placed.
+            y (int): The y-coordinate (row) on the grid where the Tetrimino's top-left corner is to be placed.
+            matrix (list of list of int): The matrix representing the blocks of the Tetrimino.
+
+        Returns:
+            bool: True if the Tetrimino can be legally placed at the specified position, False otherwise.
+        """
+        # Iterate over the matrix of the Tetrimino
+        for row_index, row in enumerate(matrix):
+            for col_index, cell in enumerate(row):
+                if cell:  # Only consider non-empty cells of the Tetrimino
+                    grid_x = x + col_index
+                    grid_y = y + row_index
+
+                    # Check if the cell is out of the left or right bounds of the grid
+                    if grid_x < 0 or grid_x >= GRID_WIDTH:
+                        return False
+
+                    # Check if the cell is below the bottom of the grid
+                    if grid_y >= GRID_HEIGHT:
+                        return False
+
+                    # Check if the cell collides with an already placed block in the grid
+                    if grid_y >= 0 and grid[grid_y][grid_x]:
+                        return False
+
+        return True
+
+class State:
+    def __init__(self, grid, current_tetrimino):
+        # Copy the grid to avoid altering the original one
+        self.grid = [row[:] for row in grid]
+        self.current_tetrimino = current_tetrimino
+
+if __name__ == '__main__':
+    game = Tetris(DQLAgent())
+    game.run()
+
+
+
+# for save....
+    # def run(self):
+    #     while not self.game_over:
+    #         # Update game state before threading
+    #         self.current_state = self.get_current_state()  # Update the current state
+    #         self.game_over = self.handle_agent_events()
+    #
+    #         # Create threads
+    #         agent_thread = threading.Thread(target=self.update_agent_thread)
+    #         game_thread = threading.Thread(target=self.refresh_game())
+    #
+    #         # Start threads
+    #         agent_thread.start()
+    #         game_thread.start()
+    #
+    #         # Wait for both threads to complete
+    #         agent_thread.join()
+    #         game_thread.join()
+    #
+    #     pygame.quit()
 
 
     # def handle_events(self):
@@ -250,21 +425,6 @@ class Tetris:
     #             #     self.hard_drop()
     #     return True
 
-    def handle_agent_events(self):
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                return True
-        self.current_action = self.agent.choose_action(self.current_state)
-        self.previous_state = self.current_state
-        if self.current_action == 0:
-            self.move_tetrimino(-1, 0)
-        elif self.current_action == 1:
-            self.move_tetrimino(1, 0)
-        elif self.current_action == 2:
-            self.rotate_tetrimino()
-        elif self.current_action == 3:
-            pass
-        return False
 
     # def get_next_states(self):
     #     next_states = []
@@ -291,200 +451,3 @@ class Tetris:
     #                 next_states.append(State(new_grid, current_shape, x_pos, self.current_tetrimino['y'], rotation))
     #
     #     return next_states
-
-    def rotate_matrix(self, matrix, times=1):
-        # Rotate the matrix 90 degrees clockwise `times` number of times
-        for _ in range(times):
-            matrix = [list(row) for row in zip(*matrix[::-1])]
-        return matrix
-
-    def update_agent_thread(self):
-        self.agent.update_agent(self.previous_state, self.current_state, self.current_action,
-                                self.calculate_reward(), self.game_over)
-
-    def refresh_game(self):
-        self.updateGame()
-        self.screen.fill(BLACK)
-        self.draw_frame()
-        self.draw_grid()
-        self.draw_tetrimino()
-        self.draw_ui()
-        self.draw_next_tetrimino()
-        pygame.display.flip()
-        self.clock.tick(60)
-
-    def run(self):
-        while not self.game_over:
-            # Update game state before threading
-            self.current_state = self.get_current_state()  # Update the current state
-            self.game_over = self.handle_agent_events()
-
-            # Create threads
-            agent_thread = threading.Thread(target=self.update_agent_thread)
-            game_thread = threading.Thread(target=self.refresh_game())
-
-            # Start threads
-            agent_thread.start()
-            game_thread.start()
-
-            # Wait for both threads to complete
-            agent_thread.join()
-            game_thread.join()
-
-        pygame.quit()
-    def run(self):
-        while not self.game_over:
-            # 1. Update game state
-            self.current_state = self.get_current_state()
-
-            # 2. Handle agent's decision
-            self.game_over = self.handle_agent_events()  # Agent decides action here
-
-            # 3. Render immediately after handling agent events
-            self.refresh_game()  # Direct call to refresh_game without threading
-            self.update_agent_thread()
-
-            # Thread handling may not be necessary if immediate rendering is required after every agent action.
-            # If performance or responsiveness is an issue, consider optimizing handle_agent_events and refresh_game.
-
-            # Delay here if needed to maintain consistent frame rate (optional)
-            pygame.time.delay(20)  # Delay to simulate frame rate control
-
-        pygame.quit()
-
-    def calculate_reward(self):
-        # Store the current state to avoid modifying the game
-        temp_grid = [row[:] for row in self.grid]
-        temp_tetrimino = self.current_tetrimino.copy()
-
-        # Simulate placing the current tetromino in the grid without locking it
-        simulated_grid = self.simulate_tetrimino_placement(temp_grid, temp_tetrimino)
-
-        # Calculate penalties and rewards based on the simulated state
-        empty_spaces_created = self.count_holes(simulated_grid) - self.count_holes(temp_grid)
-        fit_penalty = self.calculate_fit_penalty(simulated_grid)
-        max_tetromino_height = self.calculate_max_tetromino_height(temp_tetrimino)
-
-        lines_cleared_now = self.lines_cleared  # Assume lines cleared remains the same for simplicity
-
-        # Calculate penalties and rewards
-        empty_space_penalty = -2 * empty_spaces_created  # Penalty for creating more empty spaces
-        height_penalty = -10 * max_tetromino_height
-        line_clear_reward = self.calculate_line_clear_reward(lines_cleared_now)
-
-        # Combine the rewards and penalties
-        reward = fit_penalty + empty_space_penalty + height_penalty + line_clear_reward
-        return reward
-
-
-    def calculate_max_tetromino_height(self, tetrimino):
-        """Calculate the height of the topmost block of the tetromino."""
-        # Determine the highest y-value (row) that the tetromino occupies after being placed
-        matrix = tetrimino['matrix']
-        y_pos = tetrimino['y']
-
-        max_height = 0
-        for dy, row in enumerate(matrix):
-            for dx, cell in enumerate(row):
-                if cell:
-                    max_height = max(max_height, y_pos + dy)
-
-        # The distance from this maximum height to the ground (bottom of the grid)
-        distance_to_ground = GRID_HEIGHT - max_height
-        return distance_to_ground
-
-    def simulate_tetrimino_placement(self, grid, tetrimino):
-        """Simulates placing a tetromino on the grid without locking it."""
-        matrix = tetrimino['matrix']
-        x = tetrimino['x']
-        y = tetrimino['y']
-
-        for dy, row in enumerate(matrix):
-            for dx, cell in enumerate(row):
-                if cell:
-                    grid[y + dy][x + dx] = tetrimino['color']
-
-        return grid
-
-    def calculate_fit_penalty(self, grid):
-        """Penalize based on how well the tetromino fits into the current grid."""
-        gaps = 0
-        for y in range(1, GRID_HEIGHT):  # Start from 1 to avoid counting the top row
-            for x in range(GRID_WIDTH):
-                if grid[y][x] == 0 and grid[y - 1][x] != 0:
-                    gaps += 1
-        # Penalize for every gap that appears in the grid
-        return -5 * gaps
-
-    def calculate_line_clear_reward(self, lines_cleared):
-        """Calculates the reward based on the number of lines cleared."""
-        if lines_cleared == 1:
-            return 100
-        elif lines_cleared == 2:
-            return 300
-        elif lines_cleared == 3:
-            return 500
-        elif lines_cleared == 4:
-            return 800
-        else:
-            return 0
-
-    def calculate_placement_height(self, grid, tetrimino):
-        """Calculate the height penalty based on how high the tetromino was placed."""
-        min_height = GRID_HEIGHT
-        for x in range(GRID_WIDTH):
-            for y in range(GRID_HEIGHT):
-                if grid[y][x] != 0:
-                    min_height = min(min_height, y)
-                    break
-
-        # Height penalty based on the distance from the lowest empty row to the ground
-        placement_height = GRID_HEIGHT - min_height
-        return placement_height
-
-    def count_holes(self, grid=None):
-        """Calculate the number of empty spaces (holes) created by the placement of the tetromino."""
-        if grid is None:
-            grid = self.grid  # Use the current game grid if no grid is provided
-
-        total_empty_spaces = 0
-
-        for y in range(GRID_HEIGHT):
-            for x in range(GRID_WIDTH):
-                if grid[y][x] == 0:
-                    total_empty_spaces += 1
-
-        return total_empty_spaces
-
-    def calculate_terrain_features(self, grid=None):
-        if grid is None:
-            grid = self.grid  # Use the current game grid if no grid is provided
-
-        heights = [0] * GRID_WIDTH
-        for x in range(GRID_WIDTH):
-            for y in range(GRID_HEIGHT):
-                if grid[y][x]:
-                    heights[x] = GRID_HEIGHT - y
-                    break
-
-        total_height = sum(heights)
-        max_height = max(heights)
-        min_height = min(heights)
-        bumpiness = sum(abs(heights[i] - heights[i + 1]) for i in range(GRID_WIDTH - 1))
-        max_bumpiness = max(abs(heights[i] - heights[i + 1]) for i in range(GRID_WIDTH - 1))
-
-        return bumpiness, total_height, max_height, min_height,max_bumpiness
-
-class State:
-    def __init__(self, grid, current_tetrimino):
-        # Copy the grid to avoid altering the original one
-        self.grid = [row[:] for row in grid]
-        self.current_tetrimino = current_tetrimino
-
-    # def __repr__(self):
-    #     return f"State(tetrimino={self.current_tetrimino}, x={self.tetrimino_x}, y={self.tetrimino_y}, rotation={self.tetrimino_rotation})"
-
-
-if __name__ == '__main__':
-    game = Tetris(DQLAgent())
-    game.run()
