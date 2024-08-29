@@ -158,10 +158,6 @@ class Tetris:
         self.current_state = self.get_current_state()  # Update the current state
         return True
 
-    def hard_drop(self):
-        while self.move_tetrimino(0, 1):
-            pass
-
     def draw_grid(self):
         for y in range(GRID_HEIGHT):
             for x in range(GRID_WIDTH):
@@ -238,18 +234,28 @@ class Tetris:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return True
-        self.current_action = self.agent.choose_action(self.current_state)
+        lock_state = self.agent.choose_best_final_state(self.current_state, self.get_all_lock_states())
         self.previous_state = self.current_state
-        self.move_tetrimino(0,1)
-        if self.current_action == 0:
-            self.move_tetrimino(-1, 0)
-        elif self.current_action == 1:
-            self.move_tetrimino(1, 0)
-        elif self.current_action == 2:
-            self.rotate_tetrimino()
-        elif self.current_action == 3:
-            pass
+        self.set_tetrimino_to_state(lock_state)
+        self.hard_drop()
+        self.current_state = self.get_current_state()
+
         return False
+
+    def hard_drop(self):
+        """
+        Drops the current tetrimino straight down to its lowest possible position, updating the display on each drop.
+        """
+        moved = True
+        while moved:
+            # Move the tetrimino down one step
+            moved = self.move_tetrimino(0, 1)
+
+            # Refresh the game display to show the tetrimino moving down
+            self.refresh_game()
+
+            # Optionally, add a short delay to make the movement visually smooth
+            pygame.time.delay(5)
 
     def rotate_matrix(self, matrix, times=1):
         # Rotate the matrix 90 degrees clockwise `times` number of times
@@ -258,7 +264,7 @@ class Tetris:
         return matrix
 
     def update_agent_thread(self):
-        self.agent.update_agent(self.previous_state, self.current_state, self.current_action,
+        self.agent.update_agent(self.previous_state, self.current_state,
                                 self.calculate_reward(), self.game_over)
 
     def refresh_game(self):
@@ -287,34 +293,35 @@ class Tetris:
             self.update_agent_thread()
         pygame.quit()
 
-    # def calculate_reward(self):
-    #     temp_grid, temp_tetrimino_pos = self.simulate_drop()
-
-
     def calculate_reward(self):
         """Calculate the reward for the agent's action based on the placement of the Tetrimino."""
         temp_grid, (final_x, final_y) = self.simulate_drop()  # Get the simulated final state
 
-        # Calculate the height penalty
-        height_penalty = -final_y
+        # Calculate penalties for holes
+        hole_penalty = 0
+        for col in range(GRID_WIDTH):
+            column = [temp_grid[row][col] for row in range(GRID_HEIGHT)]
+            first_block = GRID_HEIGHT - 1  # Start from the bottom and go upwards
+            for row in range(GRID_HEIGHT - 1, -1, -1):
+                if column[row] != 0:
+                    first_block = row
+                elif row < first_block:
+                    hole_penalty += 1  # Count each empty space below the topmost block in each column as a hole
 
-        # Calculate empty cell penalties
-        empty_cell_penalty = 0
-        for y in range(final_y, GRID_HEIGHT):
-            if any(cell == 0 for cell in temp_grid[y]):
-                empty_cell_penalty -= 1  # Penalize each row with empty cells below the Tetrimino
-
-        # Calculate line completion reward
-        line_completion_reward = 0
+        # Reward for lines cleared
         lines_cleared = self.check_lines(temp_grid)  # Method to check how many lines would be cleared
-        if lines_cleared > 0:
-            line_completion_reward = lines_cleared / GRID_HEIGHT  # Reward for clearing lines, more for clearing multiple lines
+        line_clear_reward = (lines_cleared ** 2) * 100  # Quadratically increase reward for multiple lines
 
-        # Calculate the total reward, keeping it within the range of -1 to 1
-        total_reward = (height_penalty*5 + empty_cell_penalty*3 + line_completion_reward *20)
-        # total_reward = max(min(total_reward, 1), -1)  # Ensure the reward is within the range of -1 to 1
+        # Calculate height penalty to discourage stacking tetriminos too high
+        height_penalty = 0
+        for col in range(GRID_WIDTH):
+            for row in range(GRID_HEIGHT):
+                if temp_grid[row][col] != 0:
+                    height_penalty += (GRID_HEIGHT - row)  # Penalize based on height of blocks
+                    break  # Only count the topmost block in each column
 
-        return total_reward
+        total_reward = line_clear_reward - (hole_penalty * 50) - (height_penalty * 2)
+        return -total_reward
 
     def check_lines(self, grid):
         """Check how many lines can be cleared in the given grid."""
@@ -377,6 +384,101 @@ class Tetris:
                         return False
 
         return True
+
+    def get_all_lock_states(self):
+        """
+        Generates all possible lock states for the current tetrimino from the current state.
+        Each lock state is a version of the grid with the tetrimino locked in a valid final position.
+
+        Returns:
+            list of tuples: Each tuple contains a copy of the grid with the tetrimino locked and the corresponding tetrimino information.
+        """
+        lock_states = []
+        initial_tetrimino = self.current_tetrimino.copy()
+        original_matrix = initial_tetrimino['matrix']
+
+        # Try all rotations of the tetrimino
+        for rotation in range(4):
+            rotated_matrix = self.rotate_matrix(original_matrix, times=rotation)
+            temp_tetrimino = initial_tetrimino.copy()
+            temp_tetrimino['matrix'] = rotated_matrix
+
+            # Try all horizontal positions
+            for x in range(0, GRID_WIDTH-len(rotated_matrix[0])+1):
+                temp_tetrimino['x'] = x
+                temp_tetrimino['y'] = 0  # Start at the top of the grid
+
+                # Find the lowest valid y position for the current x and rotation
+                while not self.check_collision(temp_tetrimino['x'], temp_tetrimino['y'] + 1, rotated_matrix):
+                    temp_tetrimino['y'] += 1
+
+                if self.check_collision(temp_tetrimino['x'], temp_tetrimino['y'] + len(rotated_matrix) -1, rotated_matrix):
+                    # Create a grid copy and lock the tetrimino in place
+                    grid_copy = [row[:] for row in self.grid]
+                    self.lock_tetrimino_in_grid(grid_copy, temp_tetrimino)
+                    lock_states.append(State(grid_copy, temp_tetrimino.copy()))
+
+        return lock_states
+
+    def lock_tetrimino_in_grid(self, grid, tetrimino):
+        """
+        Locks the tetrimino into the provided grid.
+
+        Args:
+            grid (list of list of int): The grid to lock the tetrimino into.
+            tetrimino (dict): The tetrimino to lock, containing its matrix, x, y, and color.
+        """
+        matrix = tetrimino['matrix']
+        x_pos = tetrimino['x']
+        y_pos = tetrimino['y']
+        color = tetrimino['color']
+
+        for y, row in enumerate(matrix):
+            for x, cell in enumerate(row):
+                if cell:
+                    grid_x = x_pos + x
+                    grid_y = y_pos + y
+                    if 0 <= grid_y < GRID_HEIGHT and 0 <= grid_x < GRID_WIDTH:
+                        grid[grid_y][grid_x] = color
+
+    def set_tetrimino_to_state(self, lock_state):
+        """
+        Adjusts the current tetrimino's orientation and position to match the given lock state.
+        Moves the tetrimino horizontally to match the x position specified in the lock state.
+
+        Args:
+            lock_state (State): The state with the desired tetrimino position and orientation.
+        """
+        desired_x = lock_state.current_tetrimino['x']
+        desired_matrix = lock_state.current_tetrimino['matrix']
+
+        # First, rotate the tetrimino to the desired orientation
+        rotation_attempts = 0
+        while self.current_tetrimino['matrix'] != desired_matrix and rotation_attempts < 4:
+            self.rotate_tetrimino()
+            rotation_attempts += 1
+            self.refresh_game()  # Visual feedback
+            pygame.time.delay(20)  # Delay to visualize rotation
+
+        if rotation_attempts >= 4:
+            print("Warning: Unable to align rotation with desired state.")
+            return  # Exit if cannot align rotation to avoid infinite loop
+
+        # Move horizontally to the desired position
+        move_attempts = 0
+        max_moves = abs(self.current_tetrimino['x'] - desired_x) + 2  # Allow some extra attempts
+        while self.current_tetrimino['x'] != desired_x and move_attempts < max_moves:
+            move_direction = 1 if self.current_tetrimino['x'] < desired_x else -1
+            if not self.check_collision(self.current_tetrimino['x'] + move_direction, self.current_tetrimino['y'],
+                                        self.current_tetrimino['matrix']):
+                self.current_tetrimino['x'] += move_direction
+                self.refresh_game()  # Visual feedback
+                pygame.time.delay(20)  # Delay to visualize movement
+            else:
+                print("Collision detected, stopping movement.")
+                break
+            move_attempts += 1
+
 
 class State:
     def __init__(self, grid, current_tetrimino):

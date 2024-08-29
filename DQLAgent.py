@@ -1,6 +1,3 @@
-import time
-from datetime import datetime
-
 import numpy as np
 import random
 from collections import deque
@@ -11,79 +8,53 @@ from BaseAgentRL import BaseAgentRL
 
 
 class DQLAgent(BaseAgentRL):
-    def __init__(self, state_size = 209, action_size = 4):
-        """
-        Initializes the DQLAgent with the necessary parameters and settings for neural network training.
-        Creates a neural network model that predicts the best action based on the game state.
-
-        Parameters:
-        - state_size: The size of the input state vector.
-        - action_size: The number of possible actions the agent can take.
-        """
-        super().__init__(state_size, action_size)
-        self.Qvalue = deque(maxlen=2000)
-        self.gamma = 0.95  # Discount factor for future rewards
-        self.epsilon = 0.995 # Initial exploration rate
+    def __init__(self, state_size=209, num_final_states=1):
+        super().__init__(state_size, num_final_states)
+        self.gamma = 0.95
+        self.Qvalue = deque(maxlen=10000)
+        self.epsilon = 1
         self.epsilon_min = 0.01
-        self.epsilon_decay = 0.995
+        self.epsilon_decay = 0.95
         self.learning_rate = 0.001
-        self.model = self.build_model()
+        self.model = self.build_model(num_final_states)
 
-    def build_model(self):
-        """
-        Builds a neural network using Keras to approximate the Q-value function.
-        The network outputs a prediction of the expected rewards for each possible action given a state.
-
-        Returns:
-        - The compiled neural network model.
-        """
+    def build_model(self, output_size):
         model = Sequential([
-            Dense(150, input_dim=self.state_size, activation='relu'),
+            Dense(150, activation='relu'),
             Dense(120, activation='relu'),
-            Dense(self.action_size, activation='linear')
+            Dense(output_size, activation='linear')  # Output size matches the number of final states
         ])
         model.compile(loss='mse', optimizer=Adam(learning_rate=self.learning_rate))
         return model
+    def update_agent(self, state, next_state,reward , done):
+        self.Qvalue.append((state, next_state, reward, done))
 
-    def choose_action(self, state):
-        """
-        Selects the best action to take based on the current state, using an epsilon-greedy policy.
-        With probability epsilon, a random action is chosen (exploration), and with probability 1-epsilon,
-        the action with the highest predicted reward is chosen (exploitation).
-
-        Parameters:
-        - state: The current state vector of the game.
-
-        Returns:
-        - The index of the action to take.
-        """
-        # TODO: check possible actions.
-        state = self.convarte_state_to_vector(state)
+    def choose_best_final_state(self, current_state, possible_final_states):
         if np.random.rand() <= self.epsilon:
-            return np.random.randint(self.action_size)
-        act_values = self.model.predict(state.reshape(1, -1))
-        return np.argmax(act_values[0])
+            return possible_final_states[np.random.randint(len(possible_final_states))]
+        else:
+            # Convert current state to vector
+            state_vector = self.convarte_state_to_vector(current_state)
+            # Append each possible final state to the current state for prediction
+            inputs = np.array(
+                [np.concatenate([state_vector, self.convarte_state_to_vector(final_state)]) for final_state in
+                 possible_final_states])
+            # Predict the values of all possible final states
+            state_values = self.model.predict(inputs)
+            # Select the best final state based on predicted values
+            best_index = np.argmax(state_values)
+            return possible_final_states[best_index]
 
-    def update_agent(self, state, next_state, action, reward,done):
-        state = self.convarte_state_to_vector(state)
-        next_state = self.convarte_state_to_vector(next_state)
-        self.Qvalue.append((state, action, reward, next_state, done))
-        # self.train()
-
-    def train(self, batch_size=20):
-        """
-        Trains the neural network on a batch of experiences sampled from the memory.
-        Updates the network to better predict the Q-values using the Bellman equation.
-
-        Parameters:
-        - batch_size: The number of experiences to sample from the memory.
-        """
+    def train(self, batch_size=32):
         minibatch = random.sample(self.Qvalue, min(len(self.Qvalue), batch_size))
-        for state, action, reward, next_state, done in minibatch:
-            target = reward if done else reward + self.gamma * np.max(self.model.predict(next_state.reshape(1, -1))[0])
-            target_f = self.model.predict(state.reshape(1, -1))
-            target_f[0][action] = target
-            self.model.fit(state.reshape(1, -1), target_f, epochs=1, verbose=0)
+        for state, final_state, reward, done in minibatch:
+            input_vector = np.concatenate(
+                [self.convarte_state_to_vector(state), self.convarte_state_to_vector(final_state)])
+            target = reward if done else reward + self.gamma * np.max(
+                self.model.predict(input_vector.reshape(1, -1))[0])
+            target_f = self.model.predict(input_vector.reshape(1, -1))
+            target_f[0][0] = target  # Only one output, the value of the final state
+            self.model.fit(input_vector.reshape(1, -1), target_f, epochs=1, verbose=0)
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
@@ -137,7 +108,6 @@ class DQLAgent(BaseAgentRL):
         tetrimino_y_pos = tetrimino["y"]
         tetrimino_shape = ord(tetrimino["shape"])
         grid_state = self.encode_grid(grid)
-        current_tetrimino_state = self.encode_tetrimino(tetrimino["matrix"],tetrimino_x_pos,tetrimino_y_pos,tetrimino_shape,len(grid),len(grid[0]))
-        # TODO : check if needed
-        # next_tetrimino_state = self.encode_tetrimino(self.game.next_tetrimino)
+        current_tetrimino_state = self.encode_tetrimino(tetrimino["matrix"], tetrimino_x_pos, tetrimino_y_pos,
+                                                        tetrimino_shape, len(grid), len(grid[0]))
         return np.concatenate([grid_state, current_tetrimino_state])
