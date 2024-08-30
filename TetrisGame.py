@@ -60,6 +60,7 @@ class Tetris:
         pygame.display.set_caption('Tetris')
         self.current_tetrimino = None
         self.next_tetrimino = None
+        self.continue_playing = False
         self.game_over = False
 
         # self.clock = pygame.time.Clock()
@@ -254,7 +255,7 @@ class Tetris:
 
     def update_agent_thread(self):
         self.agent.update_agent(self.previous_state, self.current_state,
-                                self.calculate_reward(), self.game_over)
+                                self.calculate_reward(), self.continue_playing)
 
     def refresh_game(self):
         # self.updateGame()
@@ -268,12 +269,13 @@ class Tetris:
         # self.clock.tick(60)
 
     def run(self):
-        while not self.game_over:
+        while not self.continue_playing:
             self.current_state = self.get_current_state()
-            self.game_over = self.handle_agent_events()
+            self.continue_playing = self.handle_agent_events()
             self.refresh_game()
             self.update_agent_thread()
         pygame.quit()
+
 
     def calculate_reward(self):
         # Constants for easy tuning
