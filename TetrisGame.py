@@ -256,8 +256,9 @@ class Tetris:
         return matrix
 
     def update_agent_thread(self):
-        self.agent.update_agent(self.previous_state, self.current_state,
-                                self.calculate_reward(), self.continue_playing)
+        if self.previous_state is not None:
+            self.agent.update_agent(self.previous_state, self.current_state,
+                                    self.calculate_reward(), self.continue_playing)
 
     def refresh_game(self):
         # self.updateGame()
@@ -277,10 +278,11 @@ class Tetris:
                 self.current_state = self.get_current_state()
                 self.continue_playing = self.handle_events_and_move()
                 self.refresh_game()
-                self.finish_turn_and_prepere_to_next_one()
                 self.update_agent_thread()
+                self.finish_turn_and_prepere_to_next_one()
             else:
                 self.game_over = False
+                self.previous_state = None
                 self.agent.train()
                 self.reset_game()
         pygame.quit()
@@ -295,14 +297,16 @@ class Tetris:
                 return True
 
     def calculate_reward(self):
+        if self.is_game_over():
+            return -100
         # Constants for easy tuning
-        a = -0.5  # Aggregate height
-        b = 0.8  # Complete lines
-        c = -0.4  # Holes
-        d = -0.2  # Bumpiness
-        e = -0.3  # New holes created
-        f = -0.1  # Increase in bumpiness
-        g = -0.2  # Height of the highest block
+        a = -1  # Aggregate height
+        b = 0.5  # Complete lines
+        c = -0.8  # Holes
+        d = -0.3  # Bumpiness
+        e = -1  # New holes created
+        f = -0.3  # Increase in bumpiness
+        g = -0.5  # Height of the highest block
 
         # Current state metrics
         aggregate_height = self.calculate_aggregate_height(self.grid)
