@@ -80,11 +80,11 @@ class Tetris:
         self.lines_cleared = 0
         self.speed = 200  # Milliseconds per fall
         # self.last_fall_time = pygame.time.get_ticks()
-        self.agent.train()
         self.game_counter = self.game_counter + 1
         self.next_tetrimino = self.get_random_tetrimino()
         self.spawn_tetrimino()
         self.current_state = self.get_current_state()  # Save the current state
+        self.refresh_game()
 
     def get_current_state(self):
         return State(self.grid, self.current_tetrimino)
@@ -102,11 +102,7 @@ class Tetris:
     def spawn_tetrimino(self):
         self.current_tetrimino = self.next_tetrimino
         self.next_tetrimino = self.get_random_tetrimino()
-        if self.check_collision(self.current_tetrimino['x'], self.current_tetrimino['y'],
-                                self.current_tetrimino['matrix']):
-            self.reset_game()
-        else:
-            self.current_state = self.get_current_state()  # Update the current state
+        self.current_state = self.get_current_state()  # Update the current state
 
     def check_collision(self, x_offset, y_offset, matrix):
         for y, row in enumerate(matrix):
@@ -127,8 +123,6 @@ class Tetris:
                     y_pos = y + self.current_tetrimino['y']
                     if y_pos >= 0:
                         self.grid[y_pos][x_pos] = self.current_tetrimino['color']
-        self.clear_lines()
-        self.spawn_tetrimino()
 
     def clear_lines(self):
         lines_to_clear = [i for i, row in enumerate(self.grid) if 0 not in row]
@@ -229,7 +223,7 @@ class Tetris:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return True
-        lock_state = self.agent.choose_best_final_state(self.current_state, self.get_all_lock_states())
+        lock_state = self.agent.choose_best_final_state(self.current_state, self.get_all_success_states())
         self.previous_state = self.current_state
         self.set_tetrimino_to_state(lock_state)
         self.hard_drop()
@@ -270,17 +264,32 @@ class Tetris:
 
     def run(self):
         while not self.continue_playing:
-            self.current_state = self.get_current_state()
-            self.continue_playing = self.handle_agent_events()
-            self.refresh_game()
-            self.update_agent_thread()
+            self.game_over = self.is_game_over()
+            if not self.game_over:
+                self.current_state = self.get_current_state()
+                self.continue_playing = self.handle_agent_events()
+                self.refresh_game()
+                self.finish_turn_and_prepere_to_next_one()
+                self.update_agent_thread()
+            else:
+                self.game_over = False
+                self.agent.train()
+                self.reset_game()
         pygame.quit()
 
+    def finish_turn_and_prepere_to_next_one(self):
+        self.clear_lines()
+        self.spawn_tetrimino()
+
+    def is_game_over(self):
+        for x in range(len(self.grid[0])):
+            if self.grid[0][x] != 0:
+                return True
 
     def calculate_reward(self):
         # Constants for easy tuning
         a = -0.5  # Aggregate height
-        b = 0.8   # Complete lines
+        b = 0.8  # Complete lines
         c = -0.4  # Holes
         d = -0.2  # Bumpiness
         e = -0.3  # New holes created
@@ -309,7 +318,8 @@ class Tetris:
             height_change = 0
 
         # Total Reward Calculation
-        total_reward = (a * aggregate_height) + (b * complete_lines) + (c * current_holes) + (d * current_bumpiness) + (e * new_holes) + (f * bumpiness_increase) + (g * height_change)
+        total_reward = (a * aggregate_height) + (b * complete_lines) + (c * current_holes) + (d * current_bumpiness) + (
+                    e * new_holes) + (f * bumpiness_increase) + (g * height_change)
         return total_reward
 
     def calculate_aggregate_height(self, grid):
@@ -327,7 +337,8 @@ class Tetris:
         return holes
 
     def calculate_bumpiness(self, grid):
-        column_heights = [GRID_HEIGHT - next((y for y, cell in enumerate(col) if cell), GRID_HEIGHT) for col in zip(*grid)]
+        column_heights = [GRID_HEIGHT - next((y for y, cell in enumerate(col) if cell), GRID_HEIGHT) for col in
+                          zip(*grid)]
         return sum(abs(column_heights[i] - column_heights[i + 1]) for i in range(len(column_heights) - 1))
 
     def calculate_highest_point(self, grid):
@@ -336,7 +347,7 @@ class Tetris:
                 return GRID_HEIGHT - y
         return GRID_HEIGHT  # Return max height if no blocks found
 
-    def get_all_lock_states(self):
+    def get_all_success_states(self):
         # Generates all possible lock states for the current tetrimino from the current state.
         lock_states = []
         initial_tetrimino = self.current_tetrimino.copy()
@@ -361,12 +372,12 @@ class Tetris:
                                         rotated_matrix):
                     # Create a grid copy and lock the tetrimino in place
                     grid_copy = [row[:] for row in self.grid]
-                    self.lock_tetrimino_in_grid(grid_copy, temp_tetrimino)
+                    self.fake_lock_tetrimino_in_grid(grid_copy, temp_tetrimino)
                     lock_states.append(State(grid_copy, temp_tetrimino.copy()))
 
         return lock_states
 
-    def lock_tetrimino_in_grid(self, grid, tetrimino):
+    def fake_lock_tetrimino_in_grid(self, grid, tetrimino):
         # Locks the tetrimino into the provided grid.
         matrix = tetrimino['matrix']
         x_pos = tetrimino['x']
