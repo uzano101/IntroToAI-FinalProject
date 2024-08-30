@@ -276,84 +276,63 @@ class Tetris:
         pygame.quit()
 
     def calculate_reward(self):
-        # Calculate the reward for the agent's action based on the placement of the Tetrimino.
-        temp_grid, (final_x, final_y) = self.simulate_drop()
+        # Constants for easy tuning
+        a = -0.5  # Aggregate height
+        b = 0.8   # Complete lines
+        c = -0.4  # Holes
+        d = -0.2  # Bumpiness
+        e = -0.3  # New holes created
+        f = -0.1  # Increase in bumpiness
+        g = -0.2  # Height of the highest block
 
-        # Calculate penalties for holes
-        hole_penalty = 0
-        for col in range(GRID_WIDTH):
-            column = [temp_grid[row][col] for row in range(GRID_HEIGHT)]
-            first_block = GRID_HEIGHT - 1  # Start from the bottom and go upwards
-            for row in range(GRID_HEIGHT - 1, -1, -1):
-                if column[row] != 0:
-                    first_block = row
-                elif row < first_block:
-                    hole_penalty += 1  # Count each empty space below the topmost block in each column as a hole
+        # Current state metrics
+        aggregate_height = self.calculate_aggregate_height(self.grid)
+        complete_lines = sum(1 for row in self.grid if 0 not in row)
+        current_holes = self.calculate_holes(self.grid)
+        current_bumpiness = self.calculate_bumpiness(self.grid)
+        highest_point = self.calculate_highest_point(self.grid)
 
-        # Reward for lines cleared
-        lines_cleared = self.check_lines(temp_grid)  # Method to check how many lines would be cleared
-        line_clear_reward = (lines_cleared ** 2) * 100  # Quadratically increase reward for multiple lines
+        # Calculate changes from the previous state if available
+        if self.previous_state:
+            previous_holes = self.calculate_holes(self.previous_state.grid)
+            previous_bumpiness = self.calculate_bumpiness(self.previous_state.grid)
+            previous_highest_point = self.calculate_highest_point(self.previous_state.grid)
 
-        # Calculate height penalty to discourage stacking tetriminos too high
-        height_penalty = 0
-        for col in range(GRID_WIDTH):
-            for row in range(GRID_HEIGHT):
-                if temp_grid[row][col] != 0:
-                    height_penalty += (GRID_HEIGHT - row)  # Penalize based on height of blocks
-                    break  # Only count the topmost block in each column
+            new_holes = max(0, current_holes - previous_holes)
+            bumpiness_increase = max(0, current_bumpiness - previous_bumpiness)
+            height_change = highest_point - previous_highest_point
+        else:
+            new_holes = 0
+            bumpiness_increase = 0
+            height_change = 0
 
-        total_reward = line_clear_reward - (hole_penalty * 50) - (height_penalty * 2)
-        return -total_reward
+        # Total Reward Calculation
+        total_reward = (a * aggregate_height) + (b * complete_lines) + (c * current_holes) + (d * current_bumpiness) + (e * new_holes) + (f * bumpiness_increase) + (g * height_change)
+        return total_reward
 
-    def check_lines(self, grid):
-        #Check how many lines can be cleared in the given grid.
-        return sum(1 for row in grid if 0 not in row)
+    def calculate_aggregate_height(self, grid):
+        return sum(GRID_HEIGHT - next((y for y, cell in enumerate(col) if cell), GRID_HEIGHT) for col in zip(*grid))
 
-    def simulate_drop(self):
-        # Create a temporary grid by copying the current grid
-        temp_grid = [row[:] for row in self.grid]
-        temp_tetrimino = self.current_tetrimino.copy()
+    def calculate_holes(self, grid):
+        holes = 0
+        for x in range(GRID_WIDTH):
+            block_found = False
+            for y in range(GRID_HEIGHT):
+                if grid[y][x] != 0:
+                    block_found = True
+                elif block_found and grid[y][x] == 0:
+                    holes += 1
+        return holes
 
-        # Simulate the drop
-        while True:
-            new_y = temp_tetrimino['y'] + 1  # Move one row down
-            if self.is_valid_position(temp_grid, temp_tetrimino['x'], new_y, temp_tetrimino['matrix']):
-                temp_tetrimino['y'] = new_y
-            else:
-                break  # Stop if the new position is not valid
+    def calculate_bumpiness(self, grid):
+        column_heights = [GRID_HEIGHT - next((y for y, cell in enumerate(col) if cell), GRID_HEIGHT) for col in zip(*grid)]
+        return sum(abs(column_heights[i] - column_heights[i + 1]) for i in range(len(column_heights) - 1))
 
-        # Find the highest block position in the Tetrimino after the drop
-        highest_point = None  # To store (x, y) of the highest block
-        for y, row in enumerate(temp_tetrimino['matrix']):
-            for x, cell in enumerate(row):
-                if cell:
-                    grid_y = temp_tetrimino['y'] + y
-                    if highest_point is None or grid_y < highest_point[1]:
-                        highest_point = (temp_tetrimino['x'] + x, grid_y)
-
-        return temp_grid, highest_point
-
-    def is_valid_position(self, grid, x, y, matrix):
-        # Iterate over the matrix of the Tetrimino
-        for row_index, row in enumerate(matrix):
-            for col_index, cell in enumerate(row):
-                if cell:  # Only consider non-empty cells of the Tetrimino
-                    grid_x = x + col_index
-                    grid_y = y + row_index
-
-                    # Check if the cell is out of the left or right bounds of the grid
-                    if grid_x < 0 or grid_x >= GRID_WIDTH:
-                        return False
-
-                    # Check if the cell is below the bottom of the grid
-                    if grid_y >= GRID_HEIGHT:
-                        return False
-
-                    # Check if the cell collides with an already placed block in the grid
-                    if grid_y >= 0 and grid[grid_y][grid_x]:
-                        return False
-
-        return True
+    def calculate_highest_point(self, grid):
+        for y in range(GRID_HEIGHT):
+            if any(grid[y][x] != 0 for x in range(GRID_WIDTH)):
+                return GRID_HEIGHT - y
+        return GRID_HEIGHT  # Return max height if no blocks found
 
     def get_all_lock_states(self):
         # Generates all possible lock states for the current tetrimino from the current state.
