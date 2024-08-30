@@ -1,16 +1,17 @@
 import pygame
 import random
 from DQLAgent import DQLAgent
+
 pygame.init()
 
 # Configuration
-GRID_WIDTH = 10  # Number of columns
-GRID_HEIGHT = 20  # Number of rows
-BLOCK_SIZE = 25  # Size of each block in pixels (grid size)
-CUBE_SIZE = 20  # Actual size of the cube inside the grid
-FRAME_WIDTH = 4  # Width of the grid frame in pixels
-INTERNAL_PADDING = 2  # Padding between frame and blocks in pixels (adjusted for consistency)
-UI_WIDTH = 200  # Width of the UI area in pixels
+GRID_WIDTH = 10
+GRID_HEIGHT = 20
+BLOCK_SIZE = 25
+CUBE_SIZE = 20
+FRAME_WIDTH = 4
+INTERNAL_PADDING = 2
+UI_WIDTH = 200
 
 # Calculated dimensions
 GRID_PIXEL_WIDTH = GRID_WIDTH * BLOCK_SIZE + 2 * INTERNAL_PADDING
@@ -57,6 +58,9 @@ class Tetris:
     def __init__(self, agent):
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption('Tetris')
+        self.current_tetrimino = None
+        self.next_tetrimino = None
+        self.game_over = False
 
         # self.clock = pygame.time.Clock()
         self.font = pygame.font.Font(None, 36)
@@ -67,7 +71,7 @@ class Tetris:
         self.current_state = None
         self.current_reward = 0
         self.current_action = None
-        self.game_over = False
+
     def reset_game(self):
         self.grid = [[0 for _ in range(GRID_WIDTH)] for _ in range(GRID_HEIGHT)]
         self.score = 0
@@ -76,7 +80,7 @@ class Tetris:
         self.speed = 200  # Milliseconds per fall
         # self.last_fall_time = pygame.time.get_ticks()
         self.agent.train()
-        self.game_counter = self.game_counter+1
+        self.game_counter = self.game_counter + 1
         self.next_tetrimino = self.get_random_tetrimino()
         self.spawn_tetrimino()
         self.current_state = self.get_current_state()  # Save the current state
@@ -97,7 +101,8 @@ class Tetris:
     def spawn_tetrimino(self):
         self.current_tetrimino = self.next_tetrimino
         self.next_tetrimino = self.get_random_tetrimino()
-        if self.check_collision(self.current_tetrimino['x'], self.current_tetrimino['y'], self.current_tetrimino['matrix']):
+        if self.check_collision(self.current_tetrimino['x'], self.current_tetrimino['y'],
+                                self.current_tetrimino['matrix']):
             self.reset_game()
         else:
             self.current_state = self.get_current_state()  # Update the current state
@@ -141,7 +146,7 @@ class Tetris:
         rotated_matrix = [list(row) for row in zip(*matrix[::-1])]
         if not self.check_collision(self.current_tetrimino['x'], self.current_tetrimino['y'], rotated_matrix):
             self.current_tetrimino['matrix'] = rotated_matrix
-        self.current_state = self.get_current_state() # Update the current state
+        self.current_state = self.get_current_state()  # Update the current state
 
     def move_tetrimino(self, dx, dy):
         new_x = self.current_tetrimino['x'] + dx
@@ -176,9 +181,9 @@ class Tetris:
             for x, cell in enumerate(row):
                 if cell:
                     rect_x = FRAME_WIDTH + INTERNAL_PADDING + (
-                                self.current_tetrimino['x'] + x) * BLOCK_SIZE + CUBE_OFFSET
+                            self.current_tetrimino['x'] + x) * BLOCK_SIZE + CUBE_OFFSET
                     rect_y = FRAME_WIDTH + INTERNAL_PADDING + (
-                                self.current_tetrimino['y'] + y) * BLOCK_SIZE + CUBE_OFFSET
+                            self.current_tetrimino['y'] + y) * BLOCK_SIZE + CUBE_OFFSET
                     rect = pygame.Rect(rect_x, rect_y, CUBE_SIZE, CUBE_SIZE)
                     pygame.draw.rect(self.screen, color, rect)
                     pygame.draw.rect(self.screen, WHITE, rect, 2)  # Add white outline around the active blocks
@@ -204,31 +209,20 @@ class Tetris:
         pygame.draw.rect(self.screen, BLACK, inner_rect)
 
     def draw_ui(self):
-        # Draw score
         score_text = self.font.render(f'Score: {self.score}', True, WHITE)
         self.screen.blit(score_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 50))
 
-        # Draw level
         level_text = self.font.render(f'Level: {self.level}', True, WHITE)
         self.screen.blit(level_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 90))
 
-        # Draw next piece label
         next_text = self.font.render('Next:', True, WHITE)
         self.screen.blit(next_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 120))
 
         game_counter = self.font.render(f'Games:{self.game_counter}', True, WHITE)
         self.screen.blit(game_counter, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 200))
 
-        # Draw lines cleared
         lines_text = self.font.render(f'Lines: {self.lines_cleared}', True, WHITE)
         self.screen.blit(lines_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 300))
-
-    # def updateGame(self):
-    #     current_time = pygame.time.get_ticks()
-    #     if current_time - self.last_fall_time > self.speed:
-    #         self.move_tetrimino(0, 1)
-    #         self.last_fall_time = current_time
-
 
     def handle_agent_events(self):
         for event in pygame.event.get():
@@ -243,22 +237,17 @@ class Tetris:
         return False
 
     def hard_drop(self):
-        """
-        Drops the current tetrimino straight down to its lowest possible position, updating the display on each drop.
-        """
+        # Drops the current tetrimino straight down to its lowest possible position, updating the display on each drop.
         moved = True
         while moved:
-            # Move the tetrimino down one step
             moved = self.move_tetrimino(0, 1)
-
             # Refresh the game display to show the tetrimino moving down
             self.refresh_game()
-
-            # Optionally, add a short delay to make the movement visually smooth
+            # Add a short delay to make the movement visually smooth
             pygame.time.delay(5)
 
     def rotate_matrix(self, matrix, times=1):
-        # Rotate the matrix 90 degrees clockwise `times` number of times
+        # Rotate the tetrimino matrix 90 degrees clockwise `times` number of times
         for _ in range(times):
             matrix = [list(row) for row in zip(*matrix[::-1])]
         return matrix
@@ -278,24 +267,17 @@ class Tetris:
         pygame.display.flip()
         # self.clock.tick(60)
 
-
-
     def run(self):
         while not self.game_over:
-            # 1. Update game state
             self.current_state = self.get_current_state()
-
-            # 2. Handle agent's decision
-            self.game_over = self.handle_agent_events()  # Agent decides action here
-
-            # 3. Render immediately after handling agent events
-            self.refresh_game()  # Direct call to refresh_game without threading
+            self.game_over = self.handle_agent_events()
+            self.refresh_game()
             self.update_agent_thread()
         pygame.quit()
 
     def calculate_reward(self):
-        """Calculate the reward for the agent's action based on the placement of the Tetrimino."""
-        temp_grid, (final_x, final_y) = self.simulate_drop()  # Get the simulated final state
+        # Calculate the reward for the agent's action based on the placement of the Tetrimino.
+        temp_grid, (final_x, final_y) = self.simulate_drop()
 
         # Calculate penalties for holes
         hole_penalty = 0
@@ -324,7 +306,7 @@ class Tetris:
         return -total_reward
 
     def check_lines(self, grid):
-        """Check how many lines can be cleared in the given grid."""
+        #Check how many lines can be cleared in the given grid.
         return sum(1 for row in grid if 0 not in row)
 
     def simulate_drop(self):
@@ -352,18 +334,6 @@ class Tetris:
         return temp_grid, highest_point
 
     def is_valid_position(self, grid, x, y, matrix):
-        """
-        Check if a Tetrimino can be placed at the specified position within the grid.
-
-        Args:
-            grid (list of list of int): The current state of the game grid.
-            x (int): The x-coordinate (column) on the grid where the Tetrimino's top-left corner is to be placed.
-            y (int): The y-coordinate (row) on the grid where the Tetrimino's top-left corner is to be placed.
-            matrix (list of list of int): The matrix representing the blocks of the Tetrimino.
-
-        Returns:
-            bool: True if the Tetrimino can be legally placed at the specified position, False otherwise.
-        """
         # Iterate over the matrix of the Tetrimino
         for row_index, row in enumerate(matrix):
             for col_index, cell in enumerate(row):
@@ -386,13 +356,7 @@ class Tetris:
         return True
 
     def get_all_lock_states(self):
-        """
-        Generates all possible lock states for the current tetrimino from the current state.
-        Each lock state is a version of the grid with the tetrimino locked in a valid final position.
-
-        Returns:
-            list of tuples: Each tuple contains a copy of the grid with the tetrimino locked and the corresponding tetrimino information.
-        """
+        # Generates all possible lock states for the current tetrimino from the current state.
         lock_states = []
         initial_tetrimino = self.current_tetrimino.copy()
         original_matrix = initial_tetrimino['matrix']
@@ -404,7 +368,7 @@ class Tetris:
             temp_tetrimino['matrix'] = rotated_matrix
 
             # Try all horizontal positions
-            for x in range(0, GRID_WIDTH-len(rotated_matrix[0])+1):
+            for x in range(0, GRID_WIDTH - len(rotated_matrix[0]) + 1):
                 temp_tetrimino['x'] = x
                 temp_tetrimino['y'] = 0  # Start at the top of the grid
 
@@ -412,7 +376,8 @@ class Tetris:
                 while not self.check_collision(temp_tetrimino['x'], temp_tetrimino['y'] + 1, rotated_matrix):
                     temp_tetrimino['y'] += 1
 
-                if self.check_collision(temp_tetrimino['x'], temp_tetrimino['y'] + len(rotated_matrix) -1, rotated_matrix):
+                if self.check_collision(temp_tetrimino['x'], temp_tetrimino['y'] + len(rotated_matrix) - 1,
+                                        rotated_matrix):
                     # Create a grid copy and lock the tetrimino in place
                     grid_copy = [row[:] for row in self.grid]
                     self.lock_tetrimino_in_grid(grid_copy, temp_tetrimino)
@@ -421,13 +386,7 @@ class Tetris:
         return lock_states
 
     def lock_tetrimino_in_grid(self, grid, tetrimino):
-        """
-        Locks the tetrimino into the provided grid.
-
-        Args:
-            grid (list of list of int): The grid to lock the tetrimino into.
-            tetrimino (dict): The tetrimino to lock, containing its matrix, x, y, and color.
-        """
+        # Locks the tetrimino into the provided grid.
         matrix = tetrimino['matrix']
         x_pos = tetrimino['x']
         y_pos = tetrimino['y']
@@ -442,13 +401,10 @@ class Tetris:
                         grid[grid_y][grid_x] = color
 
     def set_tetrimino_to_state(self, lock_state):
-        """
-        Adjusts the current tetrimino's orientation and position to match the given lock state.
-        Moves the tetrimino horizontally to match the x position specified in the lock state.
 
-        Args:
-            lock_state (State): The state with the desired tetrimino position and orientation.
-        """
+        # Adjusts the current tetrimino's orientation and position to match the given lock state.
+        # Moves the tetrimino horizontally to match the x position specified in the lock state.
+
         desired_x = lock_state.current_tetrimino['x']
         desired_matrix = lock_state.current_tetrimino['matrix']
 
@@ -486,8 +442,7 @@ class State:
         self.grid = [row[:] for row in grid]
         self.current_tetrimino = current_tetrimino
 
+
 if __name__ == '__main__':
     game = Tetris(DQLAgent())
     game.run()
-
-
