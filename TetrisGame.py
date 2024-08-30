@@ -67,11 +67,11 @@ class Tetris:
         self.font = pygame.font.Font(None, 36)
         self.agent = agent
         self.game_counter = 0
-        self.reset_game()
         self.previous_state = None
         self.current_state = None
         self.current_reward = 0
         self.current_action = None
+        self.reset_game()
 
     def reset_game(self):
         self.grid = [[0 for _ in range(GRID_WIDTH)] for _ in range(GRID_HEIGHT)]
@@ -102,6 +102,7 @@ class Tetris:
     def spawn_tetrimino(self):
         self.current_tetrimino = self.next_tetrimino
         self.next_tetrimino = self.get_random_tetrimino()
+        self.get_next_tetrimino_place()
         self.current_state = self.get_current_state()  # Update the current state
 
     def check_collision(self, x_offset, y_offset, matrix):
@@ -110,7 +111,7 @@ class Tetris:
                 if cell:
                     x_pos = x + x_offset
                     y_pos = y + y_offset
-                    if x_pos < 0 or x_pos >= GRID_WIDTH or y_pos >= GRID_HEIGHT or (
+                    if x_pos < 0 or x_pos >= GRID_WIDTH or y_pos < 0 or y_pos >= GRID_HEIGHT or (
                             y_pos >= 0 and self.grid[y_pos][x_pos]):
                         return True
         return False
@@ -149,13 +150,13 @@ class Tetris:
         if not self.check_collision(new_x, new_y, self.current_tetrimino['matrix']):
             self.current_tetrimino['x'] = new_x
             self.current_tetrimino['y'] = new_y
-            self.current_state = self.get_current_state()  # Update the current state
+            self.current_state = self.get_current_state()
             return True
         elif dy == 1:
             self.lock_tetrimino()
-            self.current_state = self.get_current_state()  # Update the current state
+            self.current_state = self.get_current_state()
             return False
-        self.current_state = self.get_current_state()  # Update the current state
+        self.current_state = self.get_current_state()
         return True
 
     def draw_grid(self):
@@ -219,17 +220,24 @@ class Tetris:
         lines_text = self.font.render(f'Lines: {self.lines_cleared}', True, WHITE)
         self.screen.blit(lines_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 300))
 
-    def handle_agent_events(self):
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                return True
+    def get_next_tetrimino_place(self):
+        # for event in pygame.event.get():
+        #     if event.type == pygame.QUIT:
+        #         return True
         lock_state = self.agent.choose_best_final_state(self.current_state, self.get_all_success_states())
         self.previous_state = self.current_state
         self.set_tetrimino_to_state(lock_state)
-        self.hard_drop()
-        self.current_state = self.get_current_state()
+        # self.hard_drop()
+        # self.current_state = self.get_current_state()
 
         return False
+
+    def handle_events_and_move(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return True
+        self.hard_drop()
+        self.current_state = self.get_current_state()
 
     def hard_drop(self):
         # Drops the current tetrimino straight down to its lowest possible position, updating the display on each drop.
@@ -267,7 +275,7 @@ class Tetris:
             self.game_over = self.is_game_over()
             if not self.game_over:
                 self.current_state = self.get_current_state()
-                self.continue_playing = self.handle_agent_events()
+                self.continue_playing = self.handle_events_and_move()
                 self.refresh_game()
                 self.finish_turn_and_prepere_to_next_one()
                 self.update_agent_thread()
@@ -319,7 +327,7 @@ class Tetris:
 
         # Total Reward Calculation
         total_reward = (a * aggregate_height) + (b * complete_lines) + (c * current_holes) + (d * current_bumpiness) + (
-                    e * new_holes) + (f * bumpiness_increase) + (g * height_change)
+                e * new_holes) + (f * bumpiness_increase) + (g * height_change)
         return total_reward
 
     def calculate_aggregate_height(self, grid):
@@ -405,8 +413,8 @@ class Tetris:
         while self.current_tetrimino['matrix'] != desired_matrix and rotation_attempts < 4:
             self.rotate_tetrimino()
             rotation_attempts += 1
-            self.refresh_game()  # Visual feedback
-            pygame.time.delay(20)  # Delay to visualize rotation
+            # self.refresh_game()  # Visual feedback
+            # pygame.time.delay(20)  # Delay to visualize rotation
 
         if rotation_attempts >= 4:
             print("Warning: Unable to align rotation with desired state.")
@@ -420,8 +428,8 @@ class Tetris:
             if not self.check_collision(self.current_tetrimino['x'] + move_direction, self.current_tetrimino['y'],
                                         self.current_tetrimino['matrix']):
                 self.current_tetrimino['x'] += move_direction
-                self.refresh_game()  # Visual feedback
-                pygame.time.delay(20)  # Delay to visualize movement
+                # self.refresh_game()  # Visual feedback
+                # pygame.time.delay(20)  # Delay to visualize movement
             else:
                 print("Collision detected, stopping movement.")
                 break
