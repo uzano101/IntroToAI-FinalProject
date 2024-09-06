@@ -258,7 +258,7 @@ class Tetris:
     def update_agent_thread(self):
         if self.previous_state is not None:
             self.agent.update_agent(self.previous_state, self.current_state,
-                                    self.calculate_reward(), self.continue_playing)
+                                    self.calculate_reward(), self.is_game_over())
 
     def refresh_game(self):
         # self.updateGame()
@@ -273,10 +273,10 @@ class Tetris:
 
     def run(self):
         while not self.continue_playing:
-            self.game_over = self.is_game_over()
             if not self.game_over:
                 self.current_state = self.get_current_state()
                 self.continue_playing = self.handle_events_and_move()
+                self.game_over = self.is_game_over()
                 self.refresh_game()
                 self.update_agent_thread()
                 self.finish_turn_and_prepere_to_next_one()
