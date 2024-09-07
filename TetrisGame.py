@@ -1,6 +1,7 @@
 import pygame
 import random
 from DQLAgent import DQLAgent
+from GeneticAgent import GeneticAgent
 
 pygame.init()
 
@@ -264,8 +265,8 @@ class Tetris:
                 self.finish_turn_and_prepere_to_next_one()
             else:
                 self.game_over = False
+                self.agent.train(self.current_state)
                 self.previous_state = None
-                self.agent.train()
                 self.reset_game()
         pygame.quit()
 
@@ -427,5 +428,5 @@ class State:
 
 
 if __name__ == '__main__':
-    game = Tetris(DQLAgent())
+    game = Tetris(GeneticAgent())
     game.run()

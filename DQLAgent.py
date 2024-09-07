@@ -47,7 +47,7 @@ class DQLAgent(BaseAgent):
             best_index = np.argmax(state_values)
             return possible_final_states[best_index]
 
-    def train(self, batch_size=10):
+    def train(self, grid, batch_size=10):
         minibatch = random.sample(self.Qvalue, min(len(self.Qvalue), batch_size))
         for state, final_state, reward, done in minibatch:
             input_vector = np.concatenate(
