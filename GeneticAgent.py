@@ -2,6 +2,7 @@ import random
 # from BaseAgent import BaseAgent
 from RewardSystem import RewardSystem
 
+
 class GeneticAgent():
 
     # constructor
@@ -50,13 +51,13 @@ class GeneticAgent():
 
         return best_state
 
-    def calculate_fitness(self, state):
+    def calculate_fitness(self, state, cleared_lines=None):
         """
         calculate the reward for the final grid state.
         :param grid: the last "picture" of the grid when the agent lost.
         :return: the reward for the grid.
         """
-        return self.rewardSystem.calculate_reward(state.grid, self.current_weights)
+        return self.rewardSystem.calculate_reward(state.grid, cleared_lines, self.current_weights)
 
     def evolve_population(self):
         self.generation += 1
@@ -104,10 +105,10 @@ class GeneticAgent():
     def update_agent(self, state, reward, next_state, done):
         pass
 
-    def train(self, state, batch_size=10):
+    def train(self, state, cleared_lines):
         # TODO : think of a better way, no need to implement here, add score in the reward function.
 
-        self.population[self.current_weights_index][1] = self.calculate_fitness(state)
+        self.population[self.current_weights_index][1] = self.calculate_fitness(state, cleared_lines)
         if self.current_weights_index < len(self.population) - 1:
             self.current_weights_index += 1
         else:

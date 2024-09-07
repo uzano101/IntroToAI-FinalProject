@@ -14,40 +14,15 @@ DEFAULT_WEIGHTS = {
 
 class RewardSystem:
 
-    def calculate_reward(self, grid, weights=None):
+    def calculate_reward(self, grid, cleared_lines, weights=None):
         if weights is None:
             weights = DEFAULT_WEIGHTS
-        """Calculate the reward based on grid state metrics."""
-        # if self.is_game_over():
-        #     return -100
-        # Constants for tuning
-        # a = -1  # Aggregate height
-        # b = 0.5  # Complete lines
-        # c = -0.8  # Holes
-        # d = -0.3  # Bumpiness
-        # e = -1  # New holes created
-        # f = -0.3  # Increase in bumpiness
-        # g = -0.5  # Height of the highest block
 
         aggregate_height = self.calculate_aggregate_height(grid)
-        complete_lines = sum(1 for row in grid if 0 not in row)
+        complete_lines = cleared_lines if cleared_lines is not None else sum(1 for row in grid if 0 not in row)
         current_holes = self.calculate_holes(grid)
         current_bumpiness = self.calculate_bumpiness(grid)
         highest_point = self.calculate_highest_point(grid)
-
-        # # Calculate changes from the previous state
-        # if self.previous_state:
-        #     previous_holes = self.previous_state.current_holes
-        #     previous_bumpiness = self.previous_state.current_bumpiness
-        #     previous_highest_point = self.previous_state.highest_point
-        #
-        #     new_holes = max(0, self.current_holes - previous_holes)
-        #     bumpiness_increase = max(0, self.current_bumpiness - previous_bumpiness)
-        #     height_change = self.highest_point - previous_highest_point
-        # else:
-        #     new_holes = 0
-        #     bumpiness_increase = 0
-        #     height_change = 0
 
         # Total Reward Calculation
         total_reward = (
@@ -56,7 +31,6 @@ class RewardSystem:
                 (weights['holes'] * current_holes) +
                 (weights['Bumpiness'] * current_bumpiness) +
                 (weights['highest_point'] * highest_point)
-
         )
         return total_reward
 

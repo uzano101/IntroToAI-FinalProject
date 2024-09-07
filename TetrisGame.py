@@ -252,7 +252,7 @@ class Tetris:
 
     def update_agent_thread(self):
         if self.previous_state is not None:
-            self.agent.update_agent(self.previous_state, self.current_state, False)
+            self.agent.update_agent(self.previous_state, self.current_state, False, None)
 
     def refresh_game(self):
         self.screen.fill(BLACK)
@@ -278,7 +278,7 @@ class Tetris:
                 if self.chosen_agent is DQL_AGENT:
                     self.agent.train()
                 else:
-                    self.agent.train(self.current_state)
+                    self.agent.train(self.current_state, self.lines_cleared)
                 self.previous_state = None
                 self.reset_game()
         pygame.quit()
@@ -441,5 +441,5 @@ class State:
 
 
 if __name__ == '__main__':
-    game = Tetris(GENETIC_AGENT)
+    game = Tetris(DQL_AGENT)
     game.run()

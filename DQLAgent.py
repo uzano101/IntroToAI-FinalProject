@@ -30,8 +30,8 @@ class DQLAgent():
         model.compile(loss='mse', optimizer=Adam(learning_rate=self.learning_rate))
         return model
 
-    def update_agent(self, state, next_state, done):
-        reward = self.reward_system.calculate_reward(next_state.grid)
+    def update_agent(self, state, next_state, done, cleared_lines):
+        reward = self.reward_system.calculate_reward(next_state.grid, cleared_lines)
         self.Qvalue.append((state, next_state, reward, done))
 
     def choose_best_final_state(self, current_state, possible_final_states):
