@@ -1,8 +1,8 @@
 import random
-from BaseAgent import BaseAgent
+# from BaseAgent import BaseAgent
 from RewardSystem import RewardSystem
 
-class GeneticAgent(BaseAgent):
+class GeneticAgent():
 
     # constructor
     def __init__(self, population_size=20, mutation_rate=0.1, crossover_rate=0.7):
@@ -37,7 +37,7 @@ class GeneticAgent(BaseAgent):
         return population
 
     # delete current_state no need for it.
-    def choose_best_final_state(self, current_state, possible_final_states):
+    def choose_best_final_state(self, possible_final_states):
         # For each possible state, calculate its fitness based on the current weights
         best_state = None
         best_score = float('-inf')

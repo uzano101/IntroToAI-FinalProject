@@ -9,7 +9,8 @@ DEFAULT_WEIGHTS = {
     'highest_point': -1
 }
 
-#TODO:  change reward system and add the score to the reward
+
+#TODO:  change reward system and add the score to the reward and complete lines deliver from the game.
 
 class RewardSystem:
 

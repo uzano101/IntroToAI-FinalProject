@@ -4,10 +4,11 @@ from collections import deque
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.optimizers import Adam
-from BaseAgent import BaseAgent
+# from BaseAgent import BaseAgent
+from RewardSystem import RewardSystem
 
 
-class DQLAgent(BaseAgent):
+class DQLAgent():
     def __init__(self, state_size=209, num_final_states=1):
         self.state_size = state_size
         self.output = num_final_states
@@ -18,6 +19,7 @@ class DQLAgent(BaseAgent):
         self.epsilon_decay = 0.95
         self.learning_rate = 0.001
         self.model = self.build_model(num_final_states)
+        self.reward_system = RewardSystem()
 
     def build_model(self, output_size):
         model = Sequential([
@@ -28,7 +30,8 @@ class DQLAgent(BaseAgent):
         model.compile(loss='mse', optimizer=Adam(learning_rate=self.learning_rate))
         return model
 
-    def update_agent(self, state, next_state, reward, done):
+    def update_agent(self, state, next_state, done):
+        reward = self.reward_system.calculate_reward(next_state.grid)
         self.Qvalue.append((state, next_state, reward, done))
 
     def choose_best_final_state(self, current_state, possible_final_states):
@@ -47,7 +50,7 @@ class DQLAgent(BaseAgent):
             best_index = np.argmax(state_values)
             return possible_final_states[best_index]
 
-    def train(self, grid, batch_size=10):
+    def train(self, batch_size=10):
         minibatch = random.sample(self.Qvalue, min(len(self.Qvalue), batch_size))
         for state, final_state, reward, done in minibatch:
             input_vector = np.concatenate(

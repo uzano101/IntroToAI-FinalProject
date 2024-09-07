@@ -4,6 +4,9 @@ from DQLAgent import DQLAgent
 from GeneticAgent import GeneticAgent
 
 pygame.init()
+# agents
+DQL_AGENT = "DQL"
+GENETIC_AGENT = "GENETIC"
 
 # Configuration
 GRID_WIDTH = 10
@@ -57,6 +60,11 @@ TETRIMINOS = {
 
 class Tetris:
     def __init__(self, agent):
+        self.chosen_agent = agent
+        if agent == GENETIC_AGENT:
+            self.agent = GeneticAgent()
+        else:
+            self.agent = DQLAgent()
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption('Tetris')
         self.current_tetrimino = None
@@ -64,7 +72,6 @@ class Tetris:
         self.continue_playing = False
         self.game_over = False
         self.font = pygame.font.Font(None, 36)
-        self.agent = agent
         self.game_counter = 0
         self.previous_state = None
         self.current_state = None
@@ -219,7 +226,10 @@ class Tetris:
         self.screen.blit(lines_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 300))
 
     def get_next_tetrimino_place_by_agent(self):
-        lock_state = self.agent.choose_best_final_state(self.current_state, self.get_all_successor_states())
+        if self.chosen_agent == DQL_AGENT:
+            lock_state = self.agent.choose_best_final_state(self.current_state, self.get_all_successor_states())
+        else:
+            lock_state = self.agent.choose_best_final_state(self.get_all_successor_states())
         self.previous_state = self.current_state
         self.set_tetrimino_to_state(lock_state)
 
@@ -242,8 +252,7 @@ class Tetris:
 
     def update_agent_thread(self):
         if self.previous_state is not None:
-            self.agent.update_agent(self.previous_state, self.current_state,
-                                    self.calculate_reward(), False)
+            self.agent.update_agent(self.previous_state, self.current_state, False)
 
     def refresh_game(self):
         self.screen.fill(BLACK)
@@ -261,11 +270,15 @@ class Tetris:
                 self.continue_playing = self.handle_events_and_move()
                 self.game_over = self.is_game_over()
                 self.refresh_game()
-                self.update_agent_thread()
+                if self.chosen_agent is DQL_AGENT:
+                    self.update_agent_thread()
                 self.finish_turn_and_prepere_to_next_one()
             else:
                 self.game_over = False
-                self.agent.train(self.current_state)
+                if self.chosen_agent is DQL_AGENT:
+                    self.agent.train()
+                else:
+                    self.agent.train(self.current_state)
                 self.previous_state = None
                 self.reset_game()
         pygame.quit()
@@ -279,68 +292,68 @@ class Tetris:
             if self.grid[0][x] != 0:
                 return True
 
-    def calculate_reward(self):
-        if self.is_game_over():
-            return -100
-        # Constants for easy tuning
-        a = -1  # Aggregate height
-        b = 0.5  # Complete lines
-        c = -0.8  # Holes
-        d = -0.3  # Bumpiness
-        e = -1  # New holes created
-        f = -0.3  # Increase in bumpiness
-        g = -0.5  # Height of the highest block
-
-        # Current state metrics
-        aggregate_height = self.calculate_aggregate_height(self.grid)
-        complete_lines = sum(1 for row in self.grid if 0 not in row)
-        current_holes = self.calculate_holes(self.grid)
-        current_bumpiness = self.calculate_bumpiness(self.grid)
-        highest_point = self.calculate_highest_point(self.grid)
-
-        # Calculate changes from the previous state if available
-        if self.previous_state:
-            previous_holes = self.calculate_holes(self.previous_state.grid)
-            previous_bumpiness = self.calculate_bumpiness(self.previous_state.grid)
-            previous_highest_point = self.calculate_highest_point(self.previous_state.grid)
-
-            new_holes = max(0, current_holes - previous_holes)
-            bumpiness_increase = max(0, current_bumpiness - previous_bumpiness)
-            height_change = highest_point - previous_highest_point
-        else:
-            new_holes = 0
-            bumpiness_increase = 0
-            height_change = 0
-
-        # Total Reward Calculation
-        total_reward = (a * aggregate_height) + (b * complete_lines) + (c * current_holes) + (d * current_bumpiness) + (
-                e * new_holes) + (f * bumpiness_increase) + (g * height_change)
-        return total_reward
-
-    def calculate_aggregate_height(self, grid):
-        return sum(GRID_HEIGHT - next((y for y, cell in enumerate(col) if cell), GRID_HEIGHT) for col in zip(*grid))
-
-    def calculate_holes(self, grid):
-        holes = 0
-        for x in range(GRID_WIDTH):
-            block_found = False
-            for y in range(GRID_HEIGHT):
-                if grid[y][x] != 0:
-                    block_found = True
-                elif block_found and grid[y][x] == 0:
-                    holes += 1
-        return holes
-
-    def calculate_bumpiness(self, grid):
-        column_heights = [GRID_HEIGHT - next((y for y, cell in enumerate(col) if cell), GRID_HEIGHT) for col in
-                          zip(*grid)]
-        return sum(abs(column_heights[i] - column_heights[i + 1]) for i in range(len(column_heights) - 1))
-
-    def calculate_highest_point(self, grid):
-        for y in range(GRID_HEIGHT):
-            if any(grid[y][x] != 0 for x in range(GRID_WIDTH)):
-                return GRID_HEIGHT - y
-        return GRID_HEIGHT  # Return max height if no blocks found
+    # def calculate_reward(self):
+    #     if self.is_game_over():
+    #         return -100
+    #     # Constants for easy tuning
+    #     a = -1  # Aggregate height
+    #     b = 0.5  # Complete lines
+    #     c = -0.8  # Holes
+    #     d = -0.3  # Bumpiness
+    #     e = -1  # New holes created
+    #     f = -0.3  # Increase in bumpiness
+    #     g = -0.5  # Height of the highest block
+    #
+    #     # Current state metrics
+    #     aggregate_height = self.calculate_aggregate_height(self.grid)
+    #     complete_lines = sum(1 for row in self.grid if 0 not in row)
+    #     current_holes = self.calculate_holes(self.grid)
+    #     current_bumpiness = self.calculate_bumpiness(self.grid)
+    #     highest_point = self.calculate_highest_point(self.grid)
+    #
+    #     # Calculate changes from the previous state if available
+    #     if self.previous_state:
+    #         previous_holes = self.calculate_holes(self.previous_state.grid)
+    #         previous_bumpiness = self.calculate_bumpiness(self.previous_state.grid)
+    #         previous_highest_point = self.calculate_highest_point(self.previous_state.grid)
+    #
+    #         new_holes = max(0, current_holes - previous_holes)
+    #         bumpiness_increase = max(0, current_bumpiness - previous_bumpiness)
+    #         height_change = highest_point - previous_highest_point
+    #     else:
+    #         new_holes = 0
+    #         bumpiness_increase = 0
+    #         height_change = 0
+    #
+    #     # Total Reward Calculation
+    #     total_reward = (a * aggregate_height) + (b * complete_lines) + (c * current_holes) + (d * current_bumpiness) + (
+    #             e * new_holes) + (f * bumpiness_increase) + (g * height_change)
+    #     return total_reward
+    #
+    # def calculate_aggregate_height(self, grid):
+    #     return sum(GRID_HEIGHT - next((y for y, cell in enumerate(col) if cell), GRID_HEIGHT) for col in zip(*grid))
+    #
+    # def calculate_holes(self, grid):
+    #     holes = 0
+    #     for x in range(GRID_WIDTH):
+    #         block_found = False
+    #         for y in range(GRID_HEIGHT):
+    #             if grid[y][x] != 0:
+    #                 block_found = True
+    #             elif block_found and grid[y][x] == 0:
+    #                 holes += 1
+    #     return holes
+    #
+    # def calculate_bumpiness(self, grid):
+    #     column_heights = [GRID_HEIGHT - next((y for y, cell in enumerate(col) if cell), GRID_HEIGHT) for col in
+    #                       zip(*grid)]
+    #     return sum(abs(column_heights[i] - column_heights[i + 1]) for i in range(len(column_heights) - 1))
+    #
+    # def calculate_highest_point(self, grid):
+    #     for y in range(GRID_HEIGHT):
+    #         if any(grid[y][x] != 0 for x in range(GRID_WIDTH)):
+    #             return GRID_HEIGHT - y
+    #     return GRID_HEIGHT  # Return max height if no blocks found
 
     def rotate_matrix(self, matrix, times=1):
         # Rotate the tetrimino matrix 90 degrees clockwise `times` number of times
@@ -428,5 +441,5 @@ class State:
 
 
 if __name__ == '__main__':
-    game = Tetris(GeneticAgent())
+    game = Tetris(GENETIC_AGENT)
     game.run()
