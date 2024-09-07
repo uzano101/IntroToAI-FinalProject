@@ -1,10 +1,7 @@
 from abc import ABC, abstractmethod
 
 
-class BaseAgentRL(ABC):
-    def __init__(self, state_size, action_size):
-        self.state_size = state_size
-        self.action_size = action_size
+class BaseAgent(ABC):
 
     @abstractmethod
     def update_agent(self, state, reward, next_state, done):

@@ -4,12 +4,13 @@ from collections import deque
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.optimizers import Adam
-from BaseAgentRL import BaseAgentRL
+from BaseAgent import BaseAgent
 
 
-class DQLAgent(BaseAgentRL):
+class DQLAgent(BaseAgent):
     def __init__(self, state_size=209, num_final_states=1):
-        super().__init__(state_size, num_final_states)
+        self.state_size = state_size
+        self.output = num_final_states
         self.gamma = 0.95
         self.Qvalue = deque(maxlen=10000)
         self.epsilon = 1
@@ -26,7 +27,8 @@ class DQLAgent(BaseAgentRL):
         ])
         model.compile(loss='mse', optimizer=Adam(learning_rate=self.learning_rate))
         return model
-    def update_agent(self, state, next_state,reward , done):
+
+    def update_agent(self, state, next_state, reward, done):
         self.Qvalue.append((state, next_state, reward, done))
 
     def choose_best_final_state(self, current_state, possible_final_states):
