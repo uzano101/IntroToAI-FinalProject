@@ -57,6 +57,13 @@ TETRIMINOS = {
           [0, 1, 1]],
 }
 
+SCORES = {
+    1: 40,
+    2: 100,
+    3: 300,
+    4: 1200
+}
+
 
 class Tetris:
     def __init__(self, agent):
@@ -77,10 +84,21 @@ class Tetris:
         self.current_state = None
         self.current_reward = 0
         self.current_action = None
+        self.high_score = 0
+        self.score = 0
+        self.level = 0
+        self.last_level = 0
         self.reset_game()
+
 
     def reset_game(self):
         self.grid = [[0 for _ in range(GRID_WIDTH)] for _ in range(GRID_HEIGHT)]
+        if self.high_score < self.score:
+            self.high_score = self.score
+            self.last_level = self.level
+        if self.high_score == self.score:
+            self.high_score = self.score
+            self.last_level = min(self.last_level, self.level)
         self.score = 0
         self.level = 1
         self.lines_cleared = 0
@@ -138,7 +156,7 @@ class Tetris:
         lines_cleared = len(lines_to_clear)
         if lines_cleared > 0:
             self.lines_cleared += lines_cleared
-            self.score += (lines_cleared ** 2) * 100
+            self.score += SCORES[lines_cleared] * self.level
             self.level = self.lines_cleared // 10 + 1
             self.speed = max(50, 500 - (self.level - 1) * 20)
 
@@ -225,6 +243,18 @@ class Tetris:
         lines_text = self.font.render(f'Lines: {self.lines_cleared}', True, WHITE)
         self.screen.blit(lines_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 300))
 
+        high_score_text = self.font.render(f'High Score:', True, WHITE)
+        self.screen.blit(high_score_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 350))
+
+        high_score_text = self.font.render(f'{self.high_score}', True, WHITE)
+        self.screen.blit(high_score_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 380))
+
+        last_level_text = self.font.render(f'Last Level:', True, WHITE)
+        self.screen.blit(last_level_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 420))
+
+        last_level = self.font.render(f'{self.last_level}', True, WHITE)
+        self.screen.blit(last_level, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 450))
+
     def get_next_tetrimino_place_by_agent(self):
         if self.chosen_agent == DQL_AGENT:
             lock_state = self.agent.choose_best_final_state(self.current_state, self.get_all_successor_states())
@@ -265,7 +295,7 @@ class Tetris:
 
     def run(self):
         while not self.continue_playing:
-            if not self.game_over:
+            if not self.game_over and self.score <= 999999:
                 self.current_state = self.get_current_state()
                 self.continue_playing = self.handle_events_and_move()
                 self.game_over = self.is_game_over()
@@ -275,6 +305,7 @@ class Tetris:
                 self.finish_turn_and_prepere_to_next_one()
             else:
                 self.game_over = False
+                self.score = min(self.score, 999999)
                 if self.chosen_agent is DQL_AGENT:
                     self.agent.train()
                 else:
@@ -441,5 +472,5 @@ class State:
 
 
 if __name__ == '__main__':
-    game = Tetris(DQL_AGENT)
+    game = Tetris(GENETIC_AGENT)
     game.run()
