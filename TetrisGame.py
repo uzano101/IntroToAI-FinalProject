@@ -15,7 +15,7 @@ BLOCK_SIZE = 25
 CUBE_SIZE = 20
 FRAME_WIDTH = 4
 INTERNAL_PADDING = 2
-UI_WIDTH = 200
+UI_WIDTH = 260
 
 # Calculated dimensions
 GRID_PIXEL_WIDTH = GRID_WIDTH * BLOCK_SIZE + 2 * INTERNAL_PADDING
@@ -88,6 +88,7 @@ class Tetris:
         self.score = 0
         self.level = 0
         self.last_level = 0
+        self.generation = 0
         self.reset_game()
 
 
@@ -211,7 +212,7 @@ class Tetris:
         matrix = self.next_tetrimino['matrix']
         color = self.next_tetrimino['color']
         start_x = GRID_PIXEL_WIDTH + FRAME_WIDTH + 20
-        start_y = 150
+        start_y = 165
         for y, row in enumerate(matrix):
             for x, cell in enumerate(row):
                 if cell:
@@ -228,32 +229,52 @@ class Tetris:
         pygame.draw.rect(self.screen, BLACK, inner_rect)
 
     def draw_ui(self):
-        score_text = self.font.render(f'Score: {self.score}', True, WHITE)
+        # Display score
+        score_text = self.font.render('Score:', True, WHITE)
         self.screen.blit(score_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 50))
+        score_value = self.font.render(f'{self.score}', True, WHITE)
+        self.screen.blit(score_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 100, 50))
 
-        level_text = self.font.render(f'Level: {self.level}', True, WHITE)
+        # Display level
+        level_text = self.font.render('Level:', True, WHITE)
         self.screen.blit(level_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 90))
+        level_value = self.font.render(f'{self.level}', True, WHITE)
+        self.screen.blit(level_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 100, 90))
 
+        # Display next tetrimino
         next_text = self.font.render('Next:', True, WHITE)
-        self.screen.blit(next_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 120))
+        self.screen.blit(next_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 130))
 
-        game_counter = self.font.render(f'Games:{self.game_counter}', True, WHITE)
-        self.screen.blit(game_counter, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 200))
+        # Display game counter
+        game_counter_text = self.font.render('Games:', True, WHITE)
+        self.screen.blit(game_counter_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 230))
+        game_counter_value = self.font.render(f'{self.game_counter}', True, WHITE)
+        self.screen.blit(game_counter_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 120, 230))
 
-        lines_text = self.font.render(f'Lines: {self.lines_cleared}', True, WHITE)
-        self.screen.blit(lines_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 300))
+        # Display lines cleared
+        lines_text = self.font.render('Lines:', True, WHITE)
+        self.screen.blit(lines_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 280))
+        lines_value = self.font.render(f'{self.lines_cleared}', True, WHITE)
+        self.screen.blit(lines_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 100, 280))
 
-        high_score_text = self.font.render(f'High Score:', True, WHITE)
-        self.screen.blit(high_score_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 350))
+        # Display high score
+        high_score_text = self.font.render('High Score:', True, WHITE)
+        self.screen.blit(high_score_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 330))
+        high_score_value = self.font.render(f'{self.high_score}', True, WHITE)
+        self.screen.blit(high_score_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 160, 330))
 
-        high_score_text = self.font.render(f'{self.high_score}', True, WHITE)
-        self.screen.blit(high_score_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 380))
+        # Display highest level
+        highest_level_text = self.font.render('Highest Level:', True, WHITE)
+        self.screen.blit(highest_level_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 380))
+        highest_level_value = self.font.render(f'{self.last_level}', True, WHITE)
+        self.screen.blit(highest_level_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 190, 380))
 
-        last_level_text = self.font.render(f'Last Level:', True, WHITE)
-        self.screen.blit(last_level_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 420))
-
-        last_level = self.font.render(f'{self.last_level}', True, WHITE)
-        self.screen.blit(last_level, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 450))
+        # Conditionally display generation if the agent is GeneticAgent
+        if isinstance(self.agent, GeneticAgent):
+            generation_text = self.font.render('Generation:', True, WHITE)
+            self.screen.blit(generation_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 430))
+            generation_value = self.font.render(f'{self.agent.generation}', True, WHITE)
+            self.screen.blit(generation_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 170, 430))
 
     def get_next_tetrimino_place_by_agent(self):
         if self.chosen_agent == DQL_AGENT:
