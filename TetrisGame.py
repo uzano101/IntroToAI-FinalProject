@@ -261,20 +261,20 @@ class Tetris:
         high_score_text = self.font.render('High Score:', True, WHITE)
         self.screen.blit(high_score_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 330))
         high_score_value = self.font.render(f'{self.high_score}', True, WHITE)
-        self.screen.blit(high_score_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 160, 330))
+        self.screen.blit(high_score_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 360))
 
         # Display highest level
         highest_level_text = self.font.render('Highest Level:', True, WHITE)
-        self.screen.blit(highest_level_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 380))
+        self.screen.blit(highest_level_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 390))
         highest_level_value = self.font.render(f'{self.last_level}', True, WHITE)
-        self.screen.blit(highest_level_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 190, 380))
+        self.screen.blit(highest_level_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 190, 390))
 
         # Conditionally display generation if the agent is GeneticAgent
         if isinstance(self.agent, GeneticAgent):
             generation_text = self.font.render('Generation:', True, WHITE)
-            self.screen.blit(generation_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 430))
+            self.screen.blit(generation_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 440))
             generation_value = self.font.render(f'{self.agent.generation}', True, WHITE)
-            self.screen.blit(generation_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 170, 430))
+            self.screen.blit(generation_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 170, 440))
 
     def get_next_tetrimino_place_by_agent(self):
         if self.chosen_agent == DQL_AGENT:
@@ -303,7 +303,7 @@ class Tetris:
 
     def update_agent_thread(self):
         if self.previous_state is not None:
-            self.agent.update_agent(self.previous_state, self.current_state, False, None)
+            self.agent.update_agent(self.previous_state, self.current_state, False, self.score)
 
     def refresh_game(self):
         self.screen.fill(BLACK)
@@ -493,5 +493,5 @@ class State:
 
 
 if __name__ == '__main__':
-    game = Tetris(GENETIC_AGENT)
+    game = Tetris(DQL_AGENT)
     game.run()

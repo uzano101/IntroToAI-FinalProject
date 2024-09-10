@@ -16,52 +16,122 @@ class DQLAgent():
         self.Qvalue = deque(maxlen=10000)
         self.epsilon = 1
         self.epsilon_min = 0.01
-        self.epsilon_decay = 0.95
+        self.epsilon_decay = 1 / 2000
         self.learning_rate = 0.001
         self.model = self.build_model(num_final_states)
         self.reward_system = RewardSystem()
 
     def build_model(self, output_size):
-        model = Sequential([
-            Dense(150, activation='relu'),
-            Dense(120, activation='relu'),
-            Dense(output_size, activation='linear')  # Output size matches the number of final states
-        ])
-        model.compile(loss='mse', optimizer=Adam(learning_rate=self.learning_rate))
+        model = Sequential()
+
+        model.add(Dense(32, activation='relu'))
+        for i in range(1, 2):
+            model.add(Dense(32, activation='relu'))
+
+        model.add(Dense(1, activation='linear'))  # Output size matches the number of final states
+
+        model.compile(loss='mse', optimizer='adam')
         return model
 
-    def update_agent(self, state, next_state, done, cleared_lines):
-        reward = self.reward_system.calculate_reward(next_state.grid, cleared_lines)
+    def update_agent(self, state, next_state, done, score):
+        reward = score
         self.Qvalue.append((state, next_state, reward, done))
 
-    def choose_best_final_state(self, current_state, possible_final_states):
-        if np.random.rand() <= self.epsilon:
-            return possible_final_states[np.random.randint(len(possible_final_states))]
-        else:
-            # Convert current state to vector
-            state_vector = self.convarte_state_to_vector(current_state)
-            # Append each possible final state to the current state for prediction
-            inputs = np.array(
-                [np.concatenate([state_vector, self.convarte_state_to_vector(final_state)]) for final_state in
-                 possible_final_states])
-            # Predict the values of all possible final states
-            state_values = self.model.predict(inputs)
-            # Select the best final state based on predicted values
-            best_index = np.argmax(state_values)
-            return possible_final_states[best_index]
+    def predict_value(self, state):
+        '''Predicts the score for a certain state'''
+        return self.model.predict(state, verbose=0)[0]
 
-    def train(self, batch_size=10):
-        minibatch = random.sample(self.Qvalue, min(len(self.Qvalue), batch_size))
-        for state, final_state, reward, done in minibatch:
-            input_vector = np.concatenate(
-                [self.convarte_state_to_vector(state), self.convarte_state_to_vector(final_state)])
-            target = reward if done else reward + self.gamma * np.max(
-                self.model.predict(input_vector.reshape(1, -1))[0])
-            target_f = self.model.predict(input_vector.reshape(1, -1))
-            target_f[0][0] = target  # Only one output, the value of the final state
-            self.model.fit(input_vector.reshape(1, -1), target_f, epochs=1, verbose=0)
+    def calculate_fitness(self, state, cleared_lines=None):
+        """
+        calculate the reward for the final grid state.
+        :param grid: the last "picture" of the grid when the agent lost.
+        :return: the reward for the grid.
+        """
+        return self.reward_system.calculate_reward(state.grid, cleared_lines)
+
+    def choose_best_final_state(self, current_state, possible_final_states):
+        max_value = None
+        best_state = None
+
+        if random.random() <= self.epsilon:
+            return random.choice(list(possible_final_states))
+        else:
+            for state in possible_final_states:
+                # Get grid features only
+                states_vector = self.convarte_state_to_vector(state)
+
+                # Ensure the input is of shape (1, 4) for the neural network
+                states_vector = states_vector.reshape(1, -1)
+
+                value = self.predict_value(states_vector)
+
+                if not max_value or value > max_value:
+                    max_value = value
+                    best_state = state
+
+        return best_state
+
+    def train(self, batch_size=128, epochs=1):
+        '''Trains the agent using experience replay with batch updates'''
+
+        # Ensure the batch size does not exceed the memory size
+        if batch_size > len(self.Qvalue):
+            print('WARNING: batch size is bigger than memory size. The agent will not be trained.')
+            return
+
+        # Proceed only if there is enough memory to start training
+        if len(self.Qvalue) < batch_size:
+            return
+
+        # Sample a batch of experiences from memory
+        batch = random.sample(self.Qvalue, batch_size)
+
+        # Extract next states for batch prediction to optimize performance
+        next_states = np.array([self.convarte_state_to_vector(x[1]) for x in batch])
+
+        # Ensure next_states has the correct number of elements
+        next_states = next_states.reshape(batch_size, 4)  # Shape should match (batch_size, 4)
+
+        # Predict the Q-values for the next states in batch
+        next_qs = self.model.predict(next_states)
+
+        # Prepare the input (x) and target (y) for training
+        x = []
+        y = []
+
+        # Build the x and y structures for batch fitting
+        for i, (state, next_state, reward, done) in enumerate(batch):
+            # Convert the current state to vector format
+            state_vector = self.convarte_state_to_vector(state).reshape(1, 4)
+
+            # Predict the current Q-values using the model
+            target_qs = self.model.predict(state_vector)[0]
+
+            # Calculate the target Q-value using the Bellman equation
+            if not done:
+                # Update Q-value based on future reward
+                new_q = reward + self.gamma * np.max(next_qs[i])
+            else:
+                # If done, the future reward is 0
+                new_q = reward
+
+            # Update the Q-value for the action taken
+            target_qs[0] = new_q  # Assuming single output Q-value
+
+            # Append the input state and the updated target Q-values
+            x.append(state_vector.flatten())
+            y.append(target_qs)
+
+        # Convert x and y to numpy arrays for batch training
+        x = np.array(x)
+        y = np.array(y)
+
+        # Fit the model using the input states and updated target Q-values
+        self.model.fit(x, y, batch_size=batch_size, epochs=epochs, verbose=0)
+
+        # Update epsilon to reduce exploration over time
         if self.epsilon > self.epsilon_min:
-            self.epsilon *= self.epsilon_decay
+            self.epsilon -= self.epsilon_decay
 
     def encode_grid(self, grid):
         """
@@ -99,20 +169,29 @@ class DQLAgent():
 
         return encoded_tetrimino
 
-    def convarte_state_to_vector(self, state):
+    def convarte_state_to_vector(self, state, include_grid_features=False):
         """
-        Combines the grid state, current tetrimino state, and next tetrimino state into a single state vector.
-        This comprehensive state vector is then used by the DQL agent to make decisions.
+        Computes and returns only the grid features as a state vector.
+
+        Parameters:
+        - state: The state to be converted.
+        - include_grid_features: Parameter is retained for compatibility but not used.
 
         Returns:
-        - A concatenated numpy array of the grid state, current tetrimino state, and next tetrimino state.
+        - A numpy array containing only the grid features.
         """
         grid = state.grid
-        tetrimino = state.current_tetrimino
-        tetrimino_x_pos = tetrimino["x"]
-        tetrimino_y_pos = tetrimino["y"]
-        tetrimino_shape = ord(tetrimino["shape"])
-        grid_state = self.encode_grid(grid)
-        current_tetrimino_state = self.encode_tetrimino(tetrimino["matrix"], tetrimino_x_pos, tetrimino_y_pos,
-                                                        tetrimino_shape, len(grid), len(grid[0]))
-        return np.concatenate([grid_state, current_tetrimino_state])
+
+        # Calculate grid features
+        grid_features = [
+            self.reward_system.calculate_holes(grid),  # 1 feature
+            self.reward_system.calculate_bumpiness(grid),  # 1 feature
+            self.reward_system.calculate_aggregate_height(grid),  # 1 feature
+            self.reward_system.calculate_highest_point(grid)  # 1 feature
+        ]
+
+        # Return only the grid features
+        return np.array(grid_features)  # Total size: 4
+
+
+
