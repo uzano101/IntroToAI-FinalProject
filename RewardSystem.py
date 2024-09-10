@@ -6,7 +6,8 @@ DEFAULT_WEIGHTS = {
     'CompleteLines': 0.5,
     'holes': -0.8,
     'Bumpiness': -0.3,
-    'highest_point': -1
+    'highest_point': -1,
+    'single_holes': -2
 }
 
 
@@ -30,7 +31,8 @@ class RewardSystem:
                 (weights['CompleteLines'] * complete_lines) +
                 (weights['holes'] * current_holes) +
                 (weights['Bumpiness'] * current_bumpiness) +
-                (weights['highest_point'] * highest_point)
+                (weights['highest_point'] * highest_point) +
+                (weights['single_holes'] * self.calculate_single_holes(grid))
         )
         return total_reward
 
@@ -67,3 +69,48 @@ class RewardSystem:
             if any(grid[y][x] != 0 for x in range(GRID_WIDTH)):
                 return GRID_HEIGHT - y
         return GRID_HEIGHT  # Return max height if no blocks are found
+
+    def calculate_single_holes(self, grid):
+        """Calculate the number of single holes in the grid.
+        A single hole is defined as an empty cell (0) that has its left and right neighbors filled (1).
+
+        Args:
+            grid (list of list of int): The Tetris grid represented as a 2D list, where 0 represents an empty cell
+                                        and 1 represents a filled cell.
+
+        Returns:
+            int: The number of single holes in the grid.
+        """
+        rows = len(grid)
+        cols = len(grid[0])
+        single_holes_count = 0
+
+        # Iterate through each cell in the grid
+        for row in range(rows):
+            for col in range(cols):
+                # Check if the current cell is a hole (0)
+                if grid[row][col] == 0:
+                    # Initialize a flag to check if it's a single hole
+                    is_single_hole = True
+
+                    # Handle edge cases
+                    if col == 0:  # Leftmost column: check only the right neighbor
+                        if grid[row][col + 1] != 1:
+                            is_single_hole = False
+
+                    elif col == cols - 1:  # Rightmost column: check only the left neighbor
+                        if grid[row][col - 1] != 1:
+                            is_single_hole = False
+
+                    else:  # Middle columns: check both left and right neighbors
+                        if grid[row][col - 1] != 1 or grid[row][col + 1] != 1:
+                            is_single_hole = False
+
+                    # If it is a single hole, increment the count
+                    if is_single_hole:
+                        single_holes_count += 1
+
+        return single_holes_count
+
+
+
