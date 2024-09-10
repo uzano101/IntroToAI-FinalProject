@@ -33,6 +33,7 @@ class GeneticAgent():
                 'holes': random.uniform(-10, -5),
                 'Bumpiness': random.uniform(-5, -2),
                 'highest_point': random.uniform(-5, -2),
+                'single_holes': random.uniform(-10, -5)
             }
             population.append([weights, 0])
         return population
@@ -105,10 +106,10 @@ class GeneticAgent():
     def update_agent(self, state, reward, next_state, done):
         pass
 
-    def train(self, state, cleared_lines):
+    def train(self, score, cleared_lines):
         # TODO : think of a better way, no need to implement here, add score in the reward function.
 
-        self.population[self.current_weights_index][1] = self.calculate_fitness(state, cleared_lines)
+        self.population[self.current_weights_index][1] = score
         if self.current_weights_index < len(self.population) - 1:
             self.current_weights_index += 1
         else:

@@ -357,7 +357,7 @@ class Tetris:
                 if self.chosen_agent is DQL_AGENT:
                     self.agent.train()
                 else:
-                    self.agent.train(self.current_state, self.lines_cleared)
+                    self.agent.train(self.score, self.lines_cleared)
                 self.previous_state = None
                 self.reset_game()
         pygame.quit()
