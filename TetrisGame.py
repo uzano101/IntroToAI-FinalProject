@@ -90,7 +90,6 @@ class Tetris:
         self.score = 0
         self.level = 0
         self.last_level = 0
-        self.generation = 0
 
         # New variables for statistics
         self.statistics = []
@@ -107,7 +106,7 @@ class Tetris:
             writer = csv.writer(file)
             # Write the header
             writer.writerow(["Game Number", "Score", "Lines Cleared", "Level", "Reward", "Total Time Played (s)",
-                             "Tetriminoes Dropped", "Moves Made"])
+                             "Tetriminoes Dropped", "Moves Made", "Generation"])
             # Write the game statistics
             for stat in self.statistics:
                 writer.writerow(stat)
@@ -352,6 +351,7 @@ class Tetris:
                     self.update_agent_thread()
                 self.finish_turn_and_prepere_to_next_one()
             else:
+                self.record_game()
                 self.game_over = False
                 self.score = min(self.score, 999999)
                 if self.chosen_agent is DQL_AGENT:
@@ -367,6 +367,7 @@ class Tetris:
         self.spawn_tetrimino()
         self.num_tetriminoes_dropped += 1
 
+    def record_game(self):
         # Record game statistics at the end of each turn
         elapsed_time = time.time() - self.start_time
         reward = self.agent.calculate_fitness(self.current_state)
@@ -380,7 +381,8 @@ class Tetris:
             reward,
             round(elapsed_time, 2),
             self.num_tetriminoes_dropped,
-            self.num_moves
+            self.num_moves,
+            self.agent.generation
         ])
 
         # Reset some statistics for the next game
@@ -542,5 +544,5 @@ class State:
 
 
 if __name__ == '__main__':
-    game = Tetris(DQL_AGENT)
+    game = Tetris(GENETIC_AGENT)
     game.run()
