@@ -15,7 +15,7 @@ DEFAULT_WEIGHTS = {
 
 class RewardSystem:
 
-    def calculate_reward(self, grid, cleared_lines, weights=None):
+    def calculate_reward(self, grid, cleared_lines = None, weights=None):
         if weights is None:
             weights = DEFAULT_WEIGHTS
 
@@ -28,9 +28,9 @@ class RewardSystem:
         # Total Reward Calculation
         total_reward = (
                 (weights['aggregate_height'] * aggregate_height) +
-                (weights['CompleteLines'] * complete_lines) +
+                (weights['complete_lines'] * complete_lines) +
                 (weights['holes'] * current_holes) +
-                (weights['Bumpiness'] * current_bumpiness) +
+                (weights['bumpiness'] * current_bumpiness) +
                 (weights['highest_point'] * highest_point) +
                 (weights['single_holes'] * self.calculate_single_holes(grid))
         )
