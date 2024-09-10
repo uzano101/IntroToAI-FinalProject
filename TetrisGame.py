@@ -1,3 +1,5 @@
+import csv
+import time
 import pygame
 import random
 from DQLAgent import DQLAgent
@@ -89,8 +91,27 @@ class Tetris:
         self.level = 0
         self.last_level = 0
         self.generation = 0
+
+        # New variables for statistics
+        self.statistics = []
+        self.start_time = time.time()
+        self.num_tetriminoes_dropped = 0
+        self.num_moves = 0
+
         self.reset_game()
 
+    def export_statistics_to_csv(self):
+        """Exports the current game statistics to a CSV file."""
+        filename = f"tetris_game_statistics.csv"
+        with open(filename, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            # Write the header
+            writer.writerow(["Game Number", "Score", "Lines Cleared", "Level", "Reward", "Total Time Played (s)",
+                             "Tetriminoes Dropped", "Moves Made"])
+            # Write the game statistics
+            for stat in self.statistics:
+                writer.writerow(stat)
+        print(f"Game statistics exported to {filename}")
 
     def reset_game(self):
         self.grid = [[0 for _ in range(GRID_WIDTH)] for _ in range(GRID_HEIGHT)]
@@ -175,6 +196,7 @@ class Tetris:
             self.current_tetrimino['x'] = new_x
             self.current_tetrimino['y'] = new_y
             self.current_state = self.get_current_state()
+            self.num_moves += 1  # Increment move count
             return True
         elif dy == 1:
             self.lock_tetrimino()
@@ -288,6 +310,11 @@ class Tetris:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return True
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_p:
+                    # Export game statistics when 'P' is pressed
+                    self.export_statistics_to_csv()
+
         self.hard_drop()
         self.current_state = self.get_current_state()
 
@@ -338,6 +365,28 @@ class Tetris:
     def finish_turn_and_prepere_to_next_one(self):
         self.renew_and_check_lines()
         self.spawn_tetrimino()
+        self.num_tetriminoes_dropped += 1
+
+        # Record game statistics at the end of each turn
+        elapsed_time = time.time() - self.start_time
+        reward = self.agent.calculate_fitness(self.current_state)
+
+        # Save statistics in a list
+        self.statistics.append([
+            self.game_counter,
+            self.score,
+            self.lines_cleared,
+            self.level,
+            reward,
+            round(elapsed_time, 2),
+            self.num_tetriminoes_dropped,
+            self.num_moves
+        ])
+
+        # Reset some statistics for the next game
+        self.num_tetriminoes_dropped = 0
+        self.num_moves = 0
+        self.start_time = time.time()
 
     def is_game_over(self):
         for x in range(len(self.grid[0])):

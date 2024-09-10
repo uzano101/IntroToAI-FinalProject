@@ -16,7 +16,7 @@ class DQLAgent():
         self.Qvalue = deque(maxlen=10000)
         self.epsilon = 1
         self.epsilon_min = 0.01
-        self.epsilon_decay = 1 / 2000
+        self.epsilon_decay = 1 / 1000
         self.learning_rate = 0.001
         self.model = self.build_model(num_final_states)
         self.reward_system = RewardSystem()
@@ -25,7 +25,7 @@ class DQLAgent():
         model = Sequential()
 
         model.add(Dense(32, activation='relu'))
-        for i in range(1, 2):
+        for i in range(1, 3):
             model.add(Dense(32, activation='relu'))
 
         model.add(Dense(1, activation='linear'))  # Output size matches the number of final states
@@ -34,7 +34,7 @@ class DQLAgent():
         return model
 
     def update_agent(self, state, next_state, done, score):
-        reward = score
+        reward = self.reward_system.calculate_reward(next_state.grid, score)
         self.Qvalue.append((state, next_state, reward, done))
 
     def predict_value(self, state):
