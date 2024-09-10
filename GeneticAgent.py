@@ -11,7 +11,7 @@ class GeneticAgent():
         self.population_size = population_size
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
-        self.generation = 0  # TODO: add a option in the ui to present it.
+        self.generation = 1  # TODO: add a option in the ui to present it.
 
         # list of tuples (weights : {aggregate height .... } , reward of the game), TODO: complete explanation.
         self.population = self.initialize_population()
