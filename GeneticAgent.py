@@ -29,9 +29,9 @@ class GeneticAgent():
         for i in range(self.population_size):
             weights = {
                 'aggregate_height': random.uniform(-1, 0),
-                'CompleteLines': random.uniform(5, 10),
+                'complete_lines': random.uniform(5, 10),
                 'holes': random.uniform(-10, -5),
-                'Bumpiness': random.uniform(-5, -2),
+                'bumpiness': random.uniform(-5, -2),
                 'highest_point': random.uniform(-5, -2),
                 'single_holes': random.uniform(-10, -5)
             }

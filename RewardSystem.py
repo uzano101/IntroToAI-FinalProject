@@ -3,9 +3,9 @@ GRID_HEIGHT = 20
 
 DEFAULT_WEIGHTS = {
     'aggregate_height': -1,
-    'CompleteLines': 0.5,
+    'complete_lines': 0.5,
     'holes': -0.8,
-    'Bumpiness': -0.3,
+    'bumpiness': -0.3,
     'highest_point': -1,
     'single_holes': -2
 }
