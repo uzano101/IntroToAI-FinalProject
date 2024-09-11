@@ -107,7 +107,7 @@ class Tetris:
                 writer = csv.writer(file)
                 # Write the header
                 writer.writerow(["Game Number", "Score", "Lines Cleared", "Level", "Reward", "Total Time Played (s)",
-                                 "Tetriminoes Dropped", "Moves Made", "Generation","LevelAt999999", "Weights"])
+                                 "Tetriminoes Dropped", "Moves Made", "Generation", "Weights","LevelAt999999"])
                 # Write the game statistics
                 for stat in self.statistics:
                     writer.writerow(stat)
@@ -379,7 +379,6 @@ class Tetris:
         elapsed_time = time.time() - self.start_time
         # Calculate reward including total isolation score
         # reward = self.agent.calculate_fitness(self.current_state, isolation_score=self.total_isolation_score)
-        generation = self.agent.generation if self.chosen_agent == GENETIC_AGENT else []
         weights = self.agent.current_weights if self.chosen_agent == GENETIC_AGENT else []
         # Save statistics in a list
         self.statistics.append([
@@ -391,9 +390,9 @@ class Tetris:
             round(elapsed_time, 2),
             self.num_tetriminoes_dropped,
             self.num_moves,
-            generation,
-            self.level_at_999999,
-            weights
+            self.agent.generation,
+            weights,
+            self.level_at_999999
         ])
 
         # Reset some statistics for the next game

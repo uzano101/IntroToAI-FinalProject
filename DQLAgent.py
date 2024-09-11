@@ -8,6 +8,7 @@ from RewardSystem import RewardSystem
 
 class DQLAgent:
     def __init__(self, state_size=209, num_final_states=1):
+        self.generation = 0
         self.state_size = state_size
         self.output = num_final_states
         self.gamma = 0.95
