@@ -90,6 +90,8 @@ class Tetris:
         self.score = 0
         self.level = 0
         self.last_level = 0
+        self.locked_shapes = []  # List to keep track of locked shapes and their properties
+        self.total_isolation_score = 0  # To accumulate isolation scores during the game
 
         # New variables for statistics
         self.statistics = []
@@ -161,6 +163,7 @@ class Tetris:
         return False
 
     def lock_tetrimino(self):
+        """Lock the current tetrimino onto the grid and check its isolation properties."""
         for y, row in enumerate(self.current_tetrimino['matrix']):
             for x, cell in enumerate(row):
                 if cell:
@@ -168,6 +171,19 @@ class Tetris:
                     y_pos = y + self.current_tetrimino['y']
                     if y_pos >= 0:
                         self.grid[y_pos][x_pos] = self.current_tetrimino['color']
+
+        # Store locked shape info and calculate its isolation score
+        locked_shape_info = {
+            'shape': self.current_tetrimino['shape'],
+            'position': (self.current_tetrimino['x'], self.current_tetrimino['y']),
+            'matrix': self.current_tetrimino['matrix']
+        }
+        self.current_reward
+        self.locked_shapes.append(locked_shape_info)
+
+        # Calculate isolation property for the locked shape and add it to the total isolation score
+        isolation_score = self.agent.reward_system.calculate_isolation_for_locked_shape(self.grid, locked_shape_info)
+        self.total_isolation_score += isolation_score
 
     def renew_and_check_lines(self):
         lines_to_clear = [i for i, row in enumerate(self.grid) if 0 not in row]
@@ -370,26 +386,27 @@ class Tetris:
     def record_game(self):
         # Record game statistics at the end of each turn
         elapsed_time = time.time() - self.start_time
-        # reward = self.agent.calculate_fitness(self.score, self.lines_cleared, self.level)
-        generation = self.agent.generation if self.chosen_agent == GENETIC_AGENT else 0
-        weights = self.agent.current_weights if self.chosen_agent == GENETIC_AGENT else []
+        # Calculate reward including total isolation score
+        reward = self.agent.calculate_fitness(self.current_state, isolation_score=self.total_isolation_score)
+
         # Save statistics in a list
         self.statistics.append([
             self.game_counter,
             self.score,
             self.lines_cleared,
             self.level,
-            # reward,
+            reward,
             round(elapsed_time, 2),
             self.num_tetriminoes_dropped,
             self.num_moves,
-            generation
         ])
 
         # Reset some statistics for the next game
         self.num_tetriminoes_dropped = 0
         self.num_moves = 0
         self.start_time = time.time()
+        self.total_isolation_score = 0  # Reset for the next game
+        self.locked_shapes = []  # Reset locked shapes for the next game
 
     def is_game_over(self):
         for x in range(len(self.grid[0])):

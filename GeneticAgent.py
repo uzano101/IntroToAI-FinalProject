@@ -1,5 +1,4 @@
 import random
-# from BaseAgent import BaseAgent
 from RewardSystem import RewardSystem
 
 
@@ -7,7 +6,6 @@ class GeneticAgent():
 
     # constructor
     def __init__(self, population_size=20, mutation_rate=0.1, crossover_rate=0.7):
-
         self.population_size = population_size
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
@@ -18,6 +16,7 @@ class GeneticAgent():
         self.current_weights_index = 0
         self.current_weights = self.population[self.current_weights_index][0]
         self.rewardSystem = RewardSystem()
+        self.total_isolation_score = 0  # Initialize total isolation score for each game
 
     def initialize_population(self):
         """
@@ -38,14 +37,13 @@ class GeneticAgent():
             population.append([weights, 0])
         return population
 
-    # delete current_state no need for it.
     def choose_best_final_state(self, possible_final_states):
         # For each possible state, calculate its fitness based on the current weights
         best_state = None
         best_score = float('-inf')
 
         for state in possible_final_states:
-            score = self.rewardSystem.calculate_reward(state.grid)
+            score = self.rewardSystem.calculate_reward(state.grid, weights=self.current_weights)
             if score > best_score or best_state is None:
                 best_score = score
                 best_state = state
@@ -55,10 +53,14 @@ class GeneticAgent():
     def calculate_fitness(self, score, cleared_lines, level):
         """
         calculate the reward for the final grid state.
-        :param grid: the last "picture" of the grid when the agent lost.
-        :return: the reward for the grid.
+        :param score: the final score of the game.
+        :param cleared_lines: number of lines cleared in the game.
+        :param level: the level achieved in the game.
+        :return: the reward for the game.
         """
-        return score/level
+        # Include the accumulated isolation score in the fitness calculation
+        fitness = (score / level) - (self.total_isolation_score * 0.5)  # Adjust weight as needed for isolation penalty
+        return fitness
 
     def evolve_population(self):
         self.generation += 1
@@ -99,7 +101,7 @@ class GeneticAgent():
     def mutate(self, weights):
         for weight in weights:
             if random.random() < self.mutation_rate:
-                #Apply small changes to make the mutation.
+                # Apply small changes to make the mutation.
                 weights[weight] += random.uniform(-0.5, 0.5)
         return weights
 
@@ -107,12 +109,25 @@ class GeneticAgent():
         pass
 
     def train(self, score, cleared_lines, level):
-        # TODO : think of a better way, no need to implement here, add score in the reward function.
+        # TODO: think of a better way, no need to implement here, add score in the reward function.
 
+        # Calculate fitness using the isolation score
         self.population[self.current_weights_index][1] = self.calculate_fitness(score, cleared_lines, level)
+
         if self.current_weights_index < len(self.population) - 1:
             self.current_weights_index += 1
         else:
             self.evolve_population()
             self.current_weights_index = 0
+
         self.current_weights = self.population[self.current_weights_index][0]
+        self.total_isolation_score = 0  # Reset total isolation score for the next game
+
+    def calculate_isolation_for_locked_shape(self, grid, locked_shape_info):
+        """Calculate the isolation score for a single locked shape based on its position on the grid."""
+        return self.rewardSystem.calculate_isolation_for_locked_shape(grid, locked_shape_info)
+
+    def lock_tetrimino(self, grid, locked_shape_info):
+        """Lock a shape and calculate its isolation score."""
+        isolation_score = self.calculate_isolation_for_locked_shape(grid, locked_shape_info)
+        self.total_isolation_score += isolation_score  # Accumulate the isolation score for the game

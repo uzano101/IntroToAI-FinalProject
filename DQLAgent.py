@@ -15,7 +15,7 @@ class DQLAgent():
         self.gamma = 0.95
         self.Qvalue = deque(maxlen=10000)
         self.epsilon = 1
-        self.epsilon_min = 0.01
+        self.epsilon_min = 0
         self.epsilon_decay = 0.995
         self.learning_rate = 0.001
         self.model = self.build_model(num_final_states)
@@ -41,13 +41,24 @@ class DQLAgent():
         '''Predicts the score for a certain state'''
         return self.model.predict(state, verbose=0)[0]
 
-    def calculate_fitness(self, state, cleared_lines=None):
+    def calculate_fitness(self, state, cleared_lines=None, isolation_score=0):
         """
-        calculate the reward for the final grid state.
-        :param grid: the last "picture" of the grid when the agent lost.
-        :return: the reward for the grid.
+        Calculate the reward for the final grid state.
+        :param state: The last "picture" of the grid when the agent lost.
+        :param cleared_lines: Number of lines cleared in the current state (optional).
+        :param isolation_score: Accumulated isolation score for all locked shapes.
+        :return: The reward for the grid.
         """
-        return self.reward_system.calculate_reward(state.grid, cleared_lines)
+        # Get the current Tetrimino shape from the state
+        current_shape = state.current_tetrimino['shape'] if state.current_tetrimino else None
+
+        # Calculate the base reward using the current shape
+        base_reward = self.reward_system.calculate_reward(state.grid, cleared_lines)
+
+        # Include the accumulated isolation score in the final reward
+        final_reward = base_reward - (isolation_score * 0.5)  # Adjust weight as needed for isolation penalty
+
+        return final_reward
 
     def choose_best_final_state(self, current_state, possible_final_states):
         max_value = None
@@ -71,7 +82,7 @@ class DQLAgent():
 
         return best_state
 
-    def train(self, batch_size=128, epochs=1):
+    def train(self, batch_size=54, epochs=1):
         '''Trains the agent using experience replay with batch updates'''
 
         # Ensure the batch size does not exceed the memory size
