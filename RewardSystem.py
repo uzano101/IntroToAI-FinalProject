@@ -14,33 +14,26 @@ DEFAULT_WEIGHTS = {
 
 class RewardSystem:
 
-    def calculate_reward(self, current_state, cleared_lines=None, weights=None):
+    def calculate_reward(self, current_state, weights=None):
         if weights is None:
             weights = DEFAULT_WEIGHTS  # Ensure weights is a dictionary
 
         aggregate_height = self.calculate_aggregate_height(current_state.grid)
-        complete_lines = cleared_lines if cleared_lines is not None else sum(
-            1 for row in current_state.grid if 0 not in row)
+        cleared_lines = self.calculate_clear_lines(current_state.grid)
         current_holes = self.calculate_holes(current_state.grid)
         current_bumpiness = self.calculate_bumpiness(current_state.grid)
         highest_point = self.calculate_highest_point(current_state.grid)
-        isolation_score = self.calculate_isolation_for_locked_shape(current_state.grid, current_state.current_tetrimino)
 
         # Total Reward Calculation
         total_reward = (
-                (weights['complete_lines'] * complete_lines)
+                (weights['complete_lines'] * cleared_lines)
                 - (weights['aggregate_height'] * aggregate_height)
                 - (weights['holes'] * current_holes)
                 - (weights['bumpiness'] * current_bumpiness)
                 - (weights['highest_point'] * highest_point)
         )
-        # total_reward = total_reward + (weights['isolation_score'] * isolation_score) if "isolation_score" in weights \
-        #     else total_reward
-        return total_reward
 
-    # def is_game_over(self, grid):
-    #     """Check if the game is over (top of the grid has blocks)."""
-    #     return any(grid[0])
+        return total_reward
 
     def calculate_aggregate_height(self, grid):
         """Calculate the aggregate height of all columns."""
@@ -102,3 +95,6 @@ class RewardSystem:
                         isolation_score += 1
 
         return isolation_score
+
+    def calculate_clear_lines(self, grid):
+        return sum(1 for row in grid if 0 not in row)

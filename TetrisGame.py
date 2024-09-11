@@ -305,10 +305,7 @@ class Tetris:
             self.screen.blit(generation_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 170, 440))
 
     def get_next_tetrimino_place_by_agent(self):
-        if self.chosen_agent == DQL_AGENT:
-            lock_state = self.agent.choose_best_final_state(self.current_state, self.get_all_successor_states())
-        else:
-            lock_state = self.agent.choose_best_final_state(self.get_all_successor_states())
+        lock_state = self.agent.choose_best_final_state(self.get_all_successor_states())
         self.previous_state = self.current_state
         self.set_tetrimino_to_state(lock_state)
 
@@ -335,8 +332,9 @@ class Tetris:
             pygame.time.delay(5)
 
     def update_agent_thread(self):
+        # TODO: check if to insert game over.
         if self.previous_state is not None:
-            self.agent.update_agent(self.previous_state, self.current_state, False, self.score)
+            self.agent.update_agent(self.previous_state, self.current_state, self.game_over)
 
     def refresh_game(self):
         self.screen.fill(BLACK)
