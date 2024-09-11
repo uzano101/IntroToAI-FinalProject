@@ -5,7 +5,7 @@ from RewardSystem import RewardSystem
 class GeneticAgent():
 
     # constructor
-    def __init__(self, population_size=50, mutation_rate=0.1, crossover_rate=0.7):
+    def __init__(self, population_size=50, mutation_rate=0.1, crossover_rate=0.5):
         self.population_size = population_size
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
@@ -99,7 +99,7 @@ class GeneticAgent():
         for weight in weights:
             if random.random() < self.mutation_rate:
                 # Apply small changes to make the mutation.
-                weights[weight] *= random.uniform(0.1, 2)
+                weights[weight] *= random.uniform(0.8, 1.2)
         return weights
 
     def update_agent(self, state, reward, next_state, done):
