@@ -16,10 +16,10 @@ class DQLAgent:
         self.epsilon_min = 0
         self.epsilon_decay = 0.995
         self.learning_rate = 0.001
-        self.model = self.build_model(num_final_states)
+        self.model = self.build_model()
         self.reward_system = RewardSystem()  # Use RewardSystem to calculate rewards
 
-    def build_model(self, output_size):
+    def build_model(self):
         model = Sequential()
         model.add(Dense(32, activation='relu'))
         for i in range(1, 3):
@@ -28,7 +28,7 @@ class DQLAgent:
         model.compile(loss='mse', optimizer=Adam(learning_rate=self.learning_rate))
         return model
 
-    def update_agent(self, state, next_state, done, score):
+    def update_agent(self, state, next_state, done):
         # Compute the reward using the reward system, including isolation score
         reward = self.reward_system.calculate_reward(state)
         self.Qvalue.append((state, next_state, reward, done))
@@ -37,19 +37,8 @@ class DQLAgent:
         '''Predicts the score for a certain state'''
         return self.model.predict(state, verbose=0)[0]
 
-    def calculate_fitness(self, state, cleared_lines=None, isolation_score=0):
-        """
-        Calculate the reward for the final grid state.
-        :param state: The last "picture" of the grid when the agent lost.
-        :param cleared_lines: Number of lines cleared in the current state (optional).
-        :param isolation_score: Accumulated isolation score for all locked shapes.
-        :return: The reward for the grid.
-        """
-        # Calculate the reward using the RewardSystem
-        reward = self.reward_system.calculate_reward(state.grid, cleared_lines)
-        return reward
 
-    def choose_best_final_state(self, current_state, possible_final_states):
+    def choose_best_final_state(self, possible_final_states):
         max_value = None
         best_state = None
 
@@ -60,7 +49,7 @@ class DQLAgent:
                 # Get grid features only
                 states_vector = self.convarte_state_to_vector(state)
 
-                # Ensure the input is of shape (1, 4) for the neural network
+                # Ensure the input is of shape (1, 5) for the neural network
                 states_vector = states_vector.reshape(1, -1)
 
                 value = self.predict_value(states_vector)
@@ -102,7 +91,7 @@ class DQLAgent:
         # Build the x and y structures for batch fitting
         for i, (state, next_state, reward, done) in enumerate(batch):
             # Convert the current state to vector format
-            state_vector = self.convarte_state_to_vector(state).reshape(1, 4)
+            state_vector = self.convarte_state_to_vector(state).reshape(1, 5)
 
             # Predict the current Q-values using the model
             target_qs = self.model.predict(state_vector)[0]
@@ -133,52 +122,6 @@ class DQLAgent:
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
-    def calculate_isolation_for_state(self, state):
-        """Calculate the isolation score for a given state using the reward system."""
-        if state.current_tetrimino:
-            locked_shape_info = {
-                'matrix': state.current_tetrimino['matrix'],
-                'position': (state.current_tetrimino['x'], state.current_tetrimino['y']),
-            }
-            return self.reward_system.calculate_isolation_for_locked_shape(state.grid, locked_shape_info)
-        return 0  # No isolation score if there's no current tetrimino
-
-    def encode_grid(self, grid):
-        """
-        Converts the Tetris grid into a binary matrix. Each cell is represented as 0 if it's empty and 1 if it's occupied.
-        This representation simplifies the understanding of the grid's occupancy state for the neural network.
-
-        Returns:
-        - A flattened 1D numpy array representing the current state of the grid.
-        """
-        return np.array([[1 if cell != 0 else 0 for cell in row] for row in grid]).flatten()
-
-    def encode_tetrimino(self, tetrimino_grid, x_pos, y_pos, shape, grid_width, grid_height):
-        """
-        Encodes the Tetrimino's grid and position into a normalized form suitable for neural network input.
-
-        Parameters:
-        - tetrimino_grid: 2D list representing the Tetrimino's shape on the grid
-        - position: Tuple (x, y) representing the Tetrimino's position on the game grid
-        - grid_width: Width of the game grid
-        - grid_height: Height of the game grid
-
-        Returns:
-        - A numpy array containing the normalized position and flattened grid shape of the Tetrimino.
-        """
-        normalized_x = x_pos / grid_width
-        normalized_y = y_pos / grid_height
-
-        # Flatten the Tetrimino grid
-        flat_tetrimino = np.array(tetrimino_grid).flatten()
-        if len(flat_tetrimino) < 6:
-            flat_tetrimino = np.concatenate((flat_tetrimino, np.zeros(6 - len(flat_tetrimino))))
-
-        # Combine normalized position and flattened Tetrimino grid into a single array
-        encoded_tetrimino = np.concatenate(([normalized_x, normalized_y, shape], flat_tetrimino))
-
-        return encoded_tetrimino
-
     def convarte_state_to_vector(self, state, include_grid_features=False):
         """
         Computes and returns only the grid features as a state vector.
@@ -197,8 +140,9 @@ class DQLAgent:
             self.reward_system.calculate_holes(grid),  # 1 feature
             self.reward_system.calculate_bumpiness(grid),  # 1 feature
             self.reward_system.calculate_aggregate_height(grid),  # 1 feature
-            self.reward_system.calculate_highest_point(grid)  # 1 feature
+            self.reward_system.calculate_highest_point(grid),  # 1 feature
+            self.reward_system.calculate_clear_lines(grid)
         ]
 
         # Return only the grid features
-        return np.array(grid_features)  # Total size: 4
+        return np.array(grid_features)  # Total size: 5

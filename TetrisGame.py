@@ -102,15 +102,20 @@ class Tetris:
     def export_statistics_to_csv(self):
         """Exports the current game statistics to a CSV file."""
         filename = f"tetris_game_statistics.csv"
-        with open(filename, mode='w', newline='') as file:
-            writer = csv.writer(file)
-            # Write the header
-            writer.writerow(["Game Number", "Score", "Lines Cleared", "Level", "Reward", "Total Time Played (s)",
-                             "Tetriminoes Dropped", "Moves Made", "Generation","LevelAt999999", "Weights"])
-            # Write the game statistics
-            for stat in self.statistics:
-                writer.writerow(stat)
-        print(f"Game statistics exported to {filename}")
+        try:
+            with open(filename, mode='w', newline='') as file:
+                writer = csv.writer(file)
+                # Write the header
+                writer.writerow(["Game Number", "Score", "Lines Cleared", "Level", "Reward", "Total Time Played (s)",
+                                 "Tetriminoes Dropped", "Moves Made", "Generation","LevelAt999999", "Weights"])
+                # Write the game statistics
+                for stat in self.statistics:
+                    writer.writerow(stat)
+            print(f"Game statistics exported to {filename}")
+        except PermissionError:
+            print("close the file before enter P")
+
+
 
     def reset_game(self):
         self.grid = [[0 for _ in range(GRID_WIDTH)] for _ in range(GRID_HEIGHT)]
@@ -300,10 +305,7 @@ class Tetris:
             self.screen.blit(generation_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 170, 440))
 
     def get_next_tetrimino_place_by_agent(self):
-        if self.chosen_agent == DQL_AGENT:
-            lock_state = self.agent.choose_best_final_state(self.current_state, self.get_all_successor_states())
-        else:
-            lock_state = self.agent.choose_best_final_state(self.get_all_successor_states())
+        lock_state = self.agent.choose_best_final_state(self.get_all_successor_states())
         self.previous_state = self.current_state
         self.set_tetrimino_to_state(lock_state)
 
@@ -330,8 +332,9 @@ class Tetris:
             pygame.time.delay(5)
 
     def update_agent_thread(self):
+        # TODO: check if to insert game over.
         if self.previous_state is not None:
-            self.agent.update_agent(self.previous_state, self.current_state, False, self.score)
+            self.agent.update_agent(self.previous_state, self.current_state, self.game_over)
 
     def refresh_game(self):
         self.screen.fill(BLACK)
