@@ -374,6 +374,7 @@ class Tetris:
         elapsed_time = time.time() - self.start_time
         # Calculate reward including total isolation score
         # reward = self.agent.calculate_fitness(self.current_state, isolation_score=self.total_isolation_score)
+        weights = self.agent.current_weights if self.chosen_agent == GENETIC_AGENT else []
 
         # Save statistics in a list
         self.statistics.append([
@@ -385,6 +386,9 @@ class Tetris:
             round(elapsed_time, 2),
             self.num_tetriminoes_dropped,
             self.num_moves,
+            weights
+
+
         ])
 
         # Reset some statistics for the next game
