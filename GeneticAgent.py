@@ -9,7 +9,7 @@ class GeneticAgent():
         self.population_size = population_size
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
-        self.generation = 1  # TODO: add an option in the UI to present it.
+        self.generation = 1
         self.population = self.initialize_population()
         self.current_weights_index = 0
         self.current_weights = self.population[self.current_weights_index][0]
@@ -31,12 +31,6 @@ class GeneticAgent():
                 'bumpiness': random.uniform(0, 1),
                 'highest_point': random.uniform(0, 1)
             }
-
-            weights = {'aggregate_height': 3,
-                       'complete_lines': 9.536445648965877,
-                       'holes': 9.244664883780514,
-                       'bumpiness': 2.7113804115775544,
-                       'highest_point': 3.6276559992864015}
 
             population.append([weights, 0])
         return population
@@ -126,11 +120,3 @@ class GeneticAgent():
         self.current_weights = self.population[self.current_weights_index][0]
         self.total_isolation_score = 0  # Reset total isolation score for the next game
 
-    def calculate_isolation_for_locked_shape(self, grid, locked_shape_info):
-        """Calculate the isolation score for a single locked shape based on its position on the grid."""
-        return self.rewardSystem.calculate_isolation_for_locked_shape(grid, locked_shape_info)
-
-    def lock_tetrimino(self, grid, locked_shape_info):
-        """Lock a shape and calculate its isolation score."""
-        isolation_score = self.calculate_isolation_for_locked_shape(grid, locked_shape_info)
-        self.total_isolation_score += isolation_score  # Accumulate the isolation score for the game
