@@ -80,7 +80,7 @@ class DQLAgent:
         next_states = np.array([self.convarte_state_to_vector(x[1]) for x in batch])
 
         # Ensure next_states has the correct number of elements
-        next_states = next_states.reshape(batch_size, 4)  # Shape should match (batch_size, 4)
+        next_states = next_states.reshape(batch_size, 5)
 
         # Predict the Q-values for the next states in batch
         next_qs = self.model.predict(next_states)
