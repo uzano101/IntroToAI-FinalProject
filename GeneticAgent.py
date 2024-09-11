@@ -5,7 +5,7 @@ from RewardSystem import RewardSystem
 class GeneticAgent():
 
     # constructor
-    def __init__(self, population_size=20, mutation_rate=0.1, crossover_rate=0.7):
+    def __init__(self, population_size=50, mutation_rate=0.1, crossover_rate=0.7):
         self.population_size = population_size
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
@@ -25,13 +25,19 @@ class GeneticAgent():
         population = []
         for i in range(self.population_size):
             weights = {
-                'aggregate_height': random.uniform(-1, 0),
-                'complete_lines': random.uniform(5, 10),
-                'holes': random.uniform(-10, -5),
-                'bumpiness': random.uniform(-5, -2),
-                'highest_point': random.uniform(-5, -2),
-                'single_holes': random.uniform(-10, -5)
+                'aggregate_height': random.uniform(0, 1),
+                'complete_lines': random.uniform(0, 5),
+                'holes': random.uniform(0, 2),
+                'bumpiness': random.uniform(0, 1),
+                'highest_point': random.uniform(0, 1)
             }
+
+            weights = {'aggregate_height': 3,
+                       'complete_lines': 9.536445648965877,
+                       'holes': 9.244664883780514,
+                       'bumpiness': 2.7113804115775544,
+                       'highest_point': 3.6276559992864015}
+
             population.append([weights, 0])
         return population
 
@@ -41,7 +47,7 @@ class GeneticAgent():
         best_score = float('-inf')
 
         for state in possible_final_states:
-            score = self.rewardSystem.calculate_reward(state.grid, weights=self.current_weights)
+            score = self.rewardSystem.calculate_reward(state, weights=self.current_weights)
             if score > best_score or best_state is None:
                 best_score = score
                 best_state = state
@@ -57,9 +63,7 @@ class GeneticAgent():
         :return: the reward for the game.
         """
         # Include the accumulated isolation score in the fitness calculation
-        fitness = self.rewardSystem.calculate_reward(None, cleared_lines, self.current_weights,
-                                                     isolation_score=self.total_isolation_score)
-        return fitness
+        return score
 
     def evolve_population(self):
         self.generation += 1
@@ -67,7 +71,7 @@ class GeneticAgent():
         ranked_population = sorted(self.population, key=lambda x: x[1], reverse=True)
 
         # Select parents for reproduction, select the best two of them.
-        next_population = ranked_population[:2]
+        next_population = ranked_population[:4]
 
         # Generate new population through crossover and mutation
         while len(next_population) < self.population_size:
@@ -101,7 +105,7 @@ class GeneticAgent():
         for weight in weights:
             if random.random() < self.mutation_rate:
                 # Apply small changes to make the mutation.
-                weights[weight] += random.uniform(-0.5, 0.5)
+                weights[weight] *= random.uniform(0.1, 2)
         return weights
 
     def update_agent(self, state, reward, next_state, done):

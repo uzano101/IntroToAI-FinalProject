@@ -90,8 +90,6 @@ class Tetris:
         self.score = 0
         self.level = 0
         self.last_level = 0
-        self.locked_shapes = []  # List to keep track of locked shapes and their properties
-        self.total_isolation_score = 0  # To accumulate isolation scores during the game
 
         # New variables for statistics
         self.statistics = []
@@ -172,18 +170,6 @@ class Tetris:
                     if y_pos >= 0:
                         self.grid[y_pos][x_pos] = self.current_tetrimino['color']
 
-        # Store locked shape info and calculate its isolation score
-        locked_shape_info = {
-            'shape': self.current_tetrimino['shape'],
-            'position': (self.current_tetrimino['x'], self.current_tetrimino['y']),
-            'matrix': self.current_tetrimino['matrix']
-        }
-
-        self.locked_shapes.append(locked_shape_info)
-
-        # Calculate isolation property for the locked shape and add it to the total isolation score
-        isolation_score = self.agent.rewardSystem.calculate_isolation_for_locked_shape(self.grid, locked_shape_info)
-        self.total_isolation_score += isolation_score  # Accumulate the isolation score for the game
 
     def renew_and_check_lines(self):
         lines_to_clear = [i for i, row in enumerate(self.grid) if 0 not in row]
@@ -358,7 +344,7 @@ class Tetris:
 
     def run(self):
         while not self.continue_playing:
-            if not self.game_over and self.score <= 999999:
+            if not self.game_over and self.score <= 99999999:
                 self.current_state = self.get_current_state()
                 self.continue_playing = self.handle_events_and_move()
                 self.game_over = self.is_game_over()
@@ -369,7 +355,7 @@ class Tetris:
             else:
                 self.record_game()
                 self.game_over = False
-                self.score = min(self.score, 999999)
+                self.score = min(self.score, 99999999)
                 if self.chosen_agent is DQL_AGENT:
                     self.agent.train()
                 else:
@@ -387,7 +373,7 @@ class Tetris:
         # Record game statistics at the end of each turn
         elapsed_time = time.time() - self.start_time
         # Calculate reward including total isolation score
-        reward = self.agent.calculate_fitness(self.current_state, isolation_score=self.total_isolation_score)
+        # reward = self.agent.calculate_fitness(self.current_state, isolation_score=self.total_isolation_score)
 
         # Save statistics in a list
         self.statistics.append([
@@ -395,7 +381,7 @@ class Tetris:
             self.score,
             self.lines_cleared,
             self.level,
-            reward,
+            # reward,
             round(elapsed_time, 2),
             self.num_tetriminoes_dropped,
             self.num_moves,
@@ -499,5 +485,5 @@ class State:
 
 
 if __name__ == '__main__':
-    game = Tetris(DQL_AGENT)
+    game = Tetris(GENETIC_AGENT)
     game.run()

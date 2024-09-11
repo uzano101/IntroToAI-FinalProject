@@ -2,39 +2,40 @@ GRID_WIDTH = 10
 GRID_HEIGHT = 20
 
 DEFAULT_WEIGHTS = {
-    'aggregate_height': -0.6998233751177039,
+    'aggregate_height': 0.6998233751177039,
     'complete_lines': 9.536445648965877,
-    'holes': -9.244664883780514,
-    'bumpiness': -2.7113804115775544,
-    'highest_point': -3.6276559992864015,
-    'isolation_score': -5.0
+    'holes': 9.244664883780514,
+    'bumpiness': 2.7113804115775544,
+    'highest_point': 3.6276559992864015,
 }
-
 
 
 #TODO:  change reward system and add the score to the reward and complete lines deliver from the game.
 
 class RewardSystem:
 
-    def calculate_reward(self, grid, cleared_lines=None, weights=None, isolation_score=0):
+    def calculate_reward(self, current_state, cleared_lines=None, weights=None):
         if weights is None:
             weights = DEFAULT_WEIGHTS  # Ensure weights is a dictionary
 
-        aggregate_height = self.calculate_aggregate_height(grid)
-        complete_lines = cleared_lines if cleared_lines is not None else sum(1 for row in grid if 0 not in row)
-        current_holes = self.calculate_holes(grid)
-        current_bumpiness = self.calculate_bumpiness(grid)
-        highest_point = self.calculate_highest_point(grid)
+        aggregate_height = self.calculate_aggregate_height(current_state.grid)
+        complete_lines = cleared_lines if cleared_lines is not None else sum(
+            1 for row in current_state.grid if 0 not in row)
+        current_holes = self.calculate_holes(current_state.grid)
+        current_bumpiness = self.calculate_bumpiness(current_state.grid)
+        highest_point = self.calculate_highest_point(current_state.grid)
+        isolation_score = self.calculate_isolation_for_locked_shape(current_state.grid, current_state.current_tetrimino)
 
         # Total Reward Calculation
         total_reward = (
-            (weights['aggregate_height'] * aggregate_height) +
-            (weights['complete_lines'] * complete_lines) +
-            (weights['holes'] * current_holes) +
-            (weights['bumpiness'] * current_bumpiness) +
-            (weights['highest_point'] * highest_point) +
-            (weights['isolation_score'] * isolation_score)
+                (weights['complete_lines'] * complete_lines)
+                - (weights['aggregate_height'] * aggregate_height)
+                - (weights['holes'] * current_holes)
+                - (weights['bumpiness'] * current_bumpiness)
+                - (weights['highest_point'] * highest_point)
         )
+        # total_reward = total_reward + (weights['isolation_score'] * isolation_score) if "isolation_score" in weights \
+        #     else total_reward
         return total_reward
 
     # def is_game_over(self, grid):
@@ -74,7 +75,7 @@ class RewardSystem:
     def calculate_isolation_for_locked_shape(self, grid, locked_shape_info):
         """Calculate the isolation score for a single locked shape based on its position on the grid."""
         shape_matrix = locked_shape_info['matrix']
-        shape_x, shape_y = locked_shape_info['position']
+        shape_x, shape_y = locked_shape_info['x'], locked_shape_info['y']
         isolation_score = 0
 
         # Direction vectors for the 4 direct neighbors (up, down, left, right)
@@ -101,6 +102,3 @@ class RewardSystem:
                         isolation_score += 1
 
         return isolation_score
-
-
-
