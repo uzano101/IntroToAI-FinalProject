@@ -1,19 +1,22 @@
 GRID_WIDTH = 10
 GRID_HEIGHT = 20
 
-DEFAULT_WEIGHTS = {'aggregate_height': -0.6998233751177039,
-                   'complete_lines': 9.536445648965877,
-                   'holes': -9.244664883780514,
-                   'bumpiness': -2.7113804115775544,
-                   'highest_point': -3.6276559992864015
-                   }
+DEFAULT_WEIGHTS = {
+    'aggregate_height': -0.6998233751177039,
+    'complete_lines': 9.536445648965877,
+    'holes': -9.244664883780514,
+    'bumpiness': -2.7113804115775544,
+    'highest_point': -3.6276559992864015,
+    'isolation_score': -5.0
+}
+
 
 
 #TODO:  change reward system and add the score to the reward and complete lines deliver from the game.
 
 class RewardSystem:
 
-    def calculate_reward(self, grid, cleared_lines=None, weights=None):
+    def calculate_reward(self, grid, cleared_lines=None, weights=None, isolation_score=0):
         if weights is None:
             weights = DEFAULT_WEIGHTS  # Ensure weights is a dictionary
 
@@ -25,11 +28,12 @@ class RewardSystem:
 
         # Total Reward Calculation
         total_reward = (
-                (weights['aggregate_height'] * aggregate_height) +
-                (weights['complete_lines'] * complete_lines) +
-                (weights['holes'] * current_holes) +
-                (weights['bumpiness'] * current_bumpiness) +
-                (weights['highest_point'] * highest_point)
+            (weights['aggregate_height'] * aggregate_height) +
+            (weights['complete_lines'] * complete_lines) +
+            (weights['holes'] * current_holes) +
+            (weights['bumpiness'] * current_bumpiness) +
+            (weights['highest_point'] * highest_point) +
+            (weights['isolation_score'] * isolation_score)
         )
         return total_reward
 

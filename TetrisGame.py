@@ -178,12 +178,12 @@ class Tetris:
             'position': (self.current_tetrimino['x'], self.current_tetrimino['y']),
             'matrix': self.current_tetrimino['matrix']
         }
-        self.current_reward
+
         self.locked_shapes.append(locked_shape_info)
 
         # Calculate isolation property for the locked shape and add it to the total isolation score
-        isolation_score = self.agent.reward_system.calculate_isolation_for_locked_shape(self.grid, locked_shape_info)
-        self.total_isolation_score += isolation_score
+        isolation_score = self.agent.rewardSystem.calculate_isolation_for_locked_shape(self.grid, locked_shape_info)
+        self.total_isolation_score += isolation_score  # Accumulate the isolation score for the game
 
     def renew_and_check_lines(self):
         lines_to_clear = [i for i, row in enumerate(self.grid) if 0 not in row]

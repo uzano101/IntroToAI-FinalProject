@@ -4,11 +4,9 @@ from collections import deque
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.optimizers import Adam
-# from BaseAgent import BaseAgent
 from RewardSystem import RewardSystem
 
-
-class DQLAgent():
+class DQLAgent:
     def __init__(self, state_size=209, num_final_states=1):
         self.state_size = state_size
         self.output = num_final_states
@@ -19,22 +17,21 @@ class DQLAgent():
         self.epsilon_decay = 0.995
         self.learning_rate = 0.001
         self.model = self.build_model(num_final_states)
-        self.reward_system = RewardSystem()
+        self.reward_system = RewardSystem()  # Use RewardSystem to calculate rewards
 
     def build_model(self, output_size):
         model = Sequential()
-
         model.add(Dense(32, activation='relu'))
         for i in range(1, 3):
             model.add(Dense(32, activation='relu'))
-
         model.add(Dense(1, activation='linear'))  # Output size matches the number of final states
-
-        model.compile(loss='mse', optimizer='adam')
+        model.compile(loss='mse', optimizer=Adam(learning_rate=self.learning_rate))
         return model
 
     def update_agent(self, state, next_state, done, score):
-        reward = self.reward_system.calculate_reward(next_state.grid)
+        # Compute the reward using the reward system, including isolation score
+        isolation_score = self.calculate_isolation_for_state(state)
+        reward = self.reward_system.calculate_reward(next_state.grid, isolation_score=isolation_score)
         self.Qvalue.append((state, next_state, reward, done))
 
     def predict_value(self, state):
@@ -49,16 +46,9 @@ class DQLAgent():
         :param isolation_score: Accumulated isolation score for all locked shapes.
         :return: The reward for the grid.
         """
-        # Get the current Tetrimino shape from the state
-        current_shape = state.current_tetrimino['shape'] if state.current_tetrimino else None
-
-        # Calculate the base reward using the current shape
-        base_reward = self.reward_system.calculate_reward(state.grid, cleared_lines)
-
-        # Include the accumulated isolation score in the final reward
-        final_reward = base_reward - (isolation_score * 0.5)  # Adjust weight as needed for isolation penalty
-
-        return final_reward
+        # Calculate the reward using the RewardSystem
+        reward = self.reward_system.calculate_reward(state.grid, cleared_lines, isolation_score=isolation_score)
+        return reward
 
     def choose_best_final_state(self, current_state, possible_final_states):
         max_value = None
@@ -144,6 +134,16 @@ class DQLAgent():
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
+    def calculate_isolation_for_state(self, state):
+        """Calculate the isolation score for a given state using the reward system."""
+        if state.current_tetrimino:
+            locked_shape_info = {
+                'matrix': state.current_tetrimino['matrix'],
+                'position': (state.current_tetrimino['x'], state.current_tetrimino['y']),
+            }
+            return self.reward_system.calculate_isolation_for_locked_shape(state.grid, locked_shape_info)
+        return 0  # No isolation score if there's no current tetrimino
+
     def encode_grid(self, grid):
         """
         Converts the Tetris grid into a binary matrix. Each cell is represented as 0 if it's empty and 1 if it's occupied.
@@ -203,6 +203,3 @@ class DQLAgent():
 
         # Return only the grid features
         return np.array(grid_features)  # Total size: 4
-
-
-

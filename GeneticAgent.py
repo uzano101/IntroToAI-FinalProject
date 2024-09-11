@@ -9,14 +9,12 @@ class GeneticAgent():
         self.population_size = population_size
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
-        self.generation = 1  # TODO: add a option in the ui to present it.
-
-        # list of tuples (weights : {aggregate height .... } , reward of the game), TODO: complete explanation.
+        self.generation = 1  # TODO: add an option in the UI to present it.
         self.population = self.initialize_population()
         self.current_weights_index = 0
         self.current_weights = self.population[self.current_weights_index][0]
         self.rewardSystem = RewardSystem()
-        self.total_isolation_score = 0  # Initialize total isolation score for each game
+        self.total_isolation_score = 0
 
     def initialize_population(self):
         """
@@ -59,7 +57,8 @@ class GeneticAgent():
         :return: the reward for the game.
         """
         # Include the accumulated isolation score in the fitness calculation
-        fitness = (score / level) - (self.total_isolation_score * 0.5)  # Adjust weight as needed for isolation penalty
+        fitness = self.rewardSystem.calculate_reward(None, cleared_lines, self.current_weights,
+                                                     isolation_score=self.total_isolation_score)
         return fitness
 
     def evolve_population(self):
