@@ -16,7 +16,7 @@ class DQLAgent():
         self.Qvalue = deque(maxlen=10000)
         self.epsilon = 1
         self.epsilon_min = 0.01
-        self.epsilon_decay = 1 / 1000
+        self.epsilon_decay = 0.995
         self.learning_rate = 0.001
         self.model = self.build_model(num_final_states)
         self.reward_system = RewardSystem()
@@ -34,7 +34,7 @@ class DQLAgent():
         return model
 
     def update_agent(self, state, next_state, done, score):
-        reward = self.reward_system.calculate_reward(next_state.grid, score)
+        reward = self.reward_system.calculate_reward(next_state.grid)
         self.Qvalue.append((state, next_state, reward, done))
 
     def predict_value(self, state):
@@ -131,7 +131,7 @@ class DQLAgent():
 
         # Update epsilon to reduce exploration over time
         if self.epsilon > self.epsilon_min:
-            self.epsilon -= self.epsilon_decay
+            self.epsilon *= self.epsilon_decay
 
     def encode_grid(self, grid):
         """

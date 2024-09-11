@@ -370,7 +370,7 @@ class Tetris:
     def record_game(self):
         # Record game statistics at the end of each turn
         elapsed_time = time.time() - self.start_time
-        reward = self.agent.calculate_fitness(self.score, self.lines_cleared, self.level)
+        # reward = self.agent.calculate_fitness(self.score, self.lines_cleared, self.level)
         generation = self.agent.generation if self.chosen_agent == GENETIC_AGENT else 0
         weights = self.agent.current_weights if self.chosen_agent == GENETIC_AGENT else []
         # Save statistics in a list
@@ -379,7 +379,7 @@ class Tetris:
             self.score,
             self.lines_cleared,
             self.level,
-            reward,
+            # reward,
             round(elapsed_time, 2),
             self.num_tetriminoes_dropped,
             self.num_moves,
@@ -482,5 +482,5 @@ class State:
 
 
 if __name__ == '__main__':
-    game = Tetris(GENETIC_AGENT)
+    game = Tetris(DQL_AGENT)
     game.run()

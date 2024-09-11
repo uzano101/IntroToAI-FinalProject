@@ -1,14 +1,12 @@
 GRID_WIDTH = 10
 GRID_HEIGHT = 20
 
-DEFAULT_WEIGHTS = {
-    'aggregate_height': -1,
-    'complete_lines': 0.5,
-    'holes': -0.8,
-    'bumpiness': -0.3,
-    'highest_point': -1,
-    'single_holes': -2
-}
+DEFAULT_WEIGHTS = {'aggregate_height': -0.6998233751177039,
+                   'complete_lines': 9.536445648965877,
+                   'holes': -9.244664883780514,
+                   'bumpiness': -2.7113804115775544,
+                   'highest_point': -3.6276559992864015,
+                   'single_holes': -7.41308397447242}
 
 
 #TODO:  change reward system and add the score to the reward and complete lines deliver from the game.
