@@ -14,7 +14,7 @@ class DQLAgent:
         self.Qvalue = deque(maxlen=10000)
         self.epsilon = 1
         self.epsilon_min = 0
-        self.epsilon_decay = 0.995
+        self.epsilon_decay = 0.95
         self.learning_rate = 0.001
         self.model = self.build_model(num_final_states)
         self.reward_system = RewardSystem()  # Use RewardSystem to calculate rewards
@@ -30,8 +30,7 @@ class DQLAgent:
 
     def update_agent(self, state, next_state, done, score):
         # Compute the reward using the reward system, including isolation score
-        isolation_score = self.calculate_isolation_for_state(state)
-        reward = self.reward_system.calculate_reward(next_state.grid, isolation_score=isolation_score)
+        reward = self.reward_system.calculate_reward(state)
         self.Qvalue.append((state, next_state, reward, done))
 
     def predict_value(self, state):
@@ -47,7 +46,7 @@ class DQLAgent:
         :return: The reward for the grid.
         """
         # Calculate the reward using the RewardSystem
-        reward = self.reward_system.calculate_reward(state.grid, cleared_lines, isolation_score=isolation_score)
+        reward = self.reward_system.calculate_reward(state.grid, cleared_lines)
         return reward
 
     def choose_best_final_state(self, current_state, possible_final_states):
