@@ -14,6 +14,8 @@ class GeneticAgent():
         self.current_weights = self.population[self.current_weights_index][0]
         self.rewardSystem = RewardSystem()
         self.total_isolation_score = 0
+        self.item_game = 0
+        self.total_item_fittness = 0
 
     def initialize_population(self):
         """
@@ -107,16 +109,18 @@ class GeneticAgent():
 
     def train(self, score, cleared_lines, level):
         # TODO: think of a better way, no need to implement here, add score in the reward function.
-
-        # Calculate fitness using the isolation score
-        self.population[self.current_weights_index][1] = self.calculate_fitness(score, cleared_lines, level)
-
-        if self.current_weights_index < len(self.population) - 1:
-            self.current_weights_index += 1
+        if self.item_game == 3:
+            avg_fitness = (self.calculate_fitness(score, cleared_lines, level) + self.total_item_fittness) / 3
+            # Calculate fitness using the isolation score
+            self.population[self.current_weights_index][1] = avg_fitness
+            self.total_item_fittness = 0
+            self.item_game = 0
+            if self.current_weights_index < len(self.population) - 1:
+                self.current_weights_index += 1
+            else:
+                self.evolve_population()
+                self.current_weights_index = 0
+            self.current_weights = self.population[self.current_weights_index][0]
         else:
-            self.evolve_population()
-            self.current_weights_index = 0
-
-        self.current_weights = self.population[self.current_weights_index][0]
-        self.total_isolation_score = 0  # Reset total isolation score for the next game
-
+            self.total_item_fittness += self.calculate_fitness(score, cleared_lines, level)
+            self.item_game += 1
