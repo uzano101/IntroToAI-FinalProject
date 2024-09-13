@@ -15,7 +15,7 @@ class DQLAgent:
         self.Qvalue = deque(maxlen=10000)
         self.epsilon = 1
         self.epsilon_min = 0
-        self.epsilon_decay = 0.995
+        self.epsilon_decay = 0.95
         self.learning_rate = 0.001
         self.model = self.build_model()
         self.reward_system = RewardSystem()  # Use RewardSystem to calculate rewards
@@ -61,7 +61,7 @@ class DQLAgent:
 
         return best_state
 
-    def train(self, batch_size=108, epochs=1):
+    def train(self, batch_size=54, epochs=1):
         '''Trains the agent using experience replay with batch updates'''
 
         # Ensure the batch size does not exceed the memory size

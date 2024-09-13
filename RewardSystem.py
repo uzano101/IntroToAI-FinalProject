@@ -2,11 +2,12 @@ GRID_WIDTH = 10
 GRID_HEIGHT = 20
 
 DEFAULT_WEIGHTS = {
-    'aggregate_height': 0.7960281411906838,
-    'complete_lines': 1.8772022213937267,
-    'holes': 1.9895082584213963,
-    'bumpiness': 0.5496971098673787,
-    'highest_point': 0.37508078983246995,
+    'aggregate_height': 0.6998233751177039,
+    'complete_lines': 9.536445648965877,
+    'holes': 9.244664883780514,
+    'bumpiness': 2.7113804115775544,
+    'highest_point': 3.6276559992864015,
+    'etp_score': 5.0
 }
 
 
