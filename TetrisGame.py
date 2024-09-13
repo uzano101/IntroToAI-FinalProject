@@ -149,28 +149,12 @@ class Tetris:
         }
 
     def spawn_tetrimino(self):
-        # Spawn the next tetrimino slightly above the board
         self.current_tetrimino = self.next_tetrimino
         self.next_tetrimino = self.get_random_tetrimino()
-
-        # Set initial position just above the grid
-        self.current_tetrimino['y'] = -len(self.current_tetrimino['matrix'])
-        self.current_tetrimino['x'] = GRID_WIDTH // 2 - len(self.current_tetrimino['matrix'][0]) // 2
-
-        # Move the tetrimino down until it is on the grid or hits an occupied cell
-        while self.current_tetrimino['y'] < 0 or not self.check_collision(
-                self.current_tetrimino['x'], self.current_tetrimino['y'] + 1, self.current_tetrimino['matrix']):
-            self.current_tetrimino['y'] += 1
-            # If the tetrimino has reached y = 0 and can't move down without a collision, end the loop
-            if self.current_tetrimino['y'] >= 0 and self.check_collision(
-                    self.current_tetrimino['x'], self.current_tetrimino['y'], self.current_tetrimino['matrix']):
-                break
-
-        # If after moving down, the tetrimino is still not fully visible or collides at the top
-        if self.current_tetrimino['y'] < 0 or self.check_collision(
-                self.current_tetrimino['x'], self.current_tetrimino['y'], self.current_tetrimino['matrix']):
-            self.game_over = True  # Game over if unable to place the new tetrimino
-
+        if self.check_collision(self.current_tetrimino['x'], self.current_tetrimino['y'],
+                                self.current_tetrimino['matrix']):
+            self.game_over = True
+            return
         self.get_next_tetrimino_place_by_agent()
         self.current_state = self.get_current_state()  # Update the current state
 
@@ -224,12 +208,11 @@ class Tetris:
             self.current_state = self.get_current_state()
             self.num_moves += 1  # Increment move count
             return True
-        elif dy == 1:
+        elif dy == 1:  # Check if the tetrimino has landed
             self.lock_tetrimino()
-            self.current_state = self.get_current_state()
-            return False
         self.current_state = self.get_current_state()
-        return True
+        return False
+
 
     def draw_grid(self):
         for y in range(GRID_HEIGHT):
