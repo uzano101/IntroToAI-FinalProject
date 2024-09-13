@@ -3,8 +3,8 @@ from RewardSystem import RewardSystem
 
 
 class GeneticAgent():
-    # constructor
-    def __init__(self, population_size=20, mutation_rate=0.1, crossover_rate=0.7):
+    # cons tructor
+    def __init__(self, population_size=40, mutation_rate=0.1, crossover_rate=0.5):
         self.population_size = population_size
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
@@ -24,11 +24,11 @@ class GeneticAgent():
         population = []
         for i in range(self.population_size):
             weights = {
-                'aggregate_height': 1.0216828929347057,
-                'complete_lines': 2.2434697533655767,
-                'holes': 1.6858774317691887,
-                'bumpiness': 0.6698899926251242,
-                'highest_point':0.026163123460452898,
+                'aggregate_height': random.uniform(0, 1),
+                'complete_lines': random.uniform(0, 5),
+                'holes': random.uniform(0, 2),
+                'bumpiness': random.uniform(0, 1),
+                'highest_point': random.uniform(0, 1),
                 'etp_score': random.uniform(0, 2)
             }
 
@@ -66,7 +66,6 @@ class GeneticAgent():
 
         # Select parents for reproduction, select the best two of them.
         next_population = ranked_population[:4]
-        ranked_population = ranked_population[:8]
 
         # Generate new population through crossover and mutation
         while len(next_population) < self.population_size:
