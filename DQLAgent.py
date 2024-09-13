@@ -8,15 +8,16 @@ from RewardSystem import RewardSystem
 
 
 class DQLAgent:
-    def __init__(self, state_size=209, num_final_states=1):
+    def __init__(self, state_size=209, num_final_states=1, gamma=0.95, epsilon=1, epsilon_decay=0.995, batch_size=108):
         self.generation = 0
         self.state_size = state_size
         self.output = num_final_states
-        self.gamma = 0.95
+        self.gamma = gamma
         self.Qvalue = deque(maxlen=10000)
-        self.epsilon = 1
+        self.epsilon = epsilon
         self.epsilon_min = 0
-        self.epsilon_decay = 0.995
+        self.batch_size = batch_size
+        self.epsilon_decay = epsilon_decay
         self.learning_rate = 0.001
         self.model = self.build_model()
         self.reward_system = RewardSystem()
@@ -72,10 +73,11 @@ class DQLAgent:
 
         return best_state
 
-    def train(self, batch_size=108, epochs=1):
+    def train(self, batch_size=64, epochs=1):
         """
             Trains the agent using experience replay with batch updates
         """
+        batch_size = self.batch_size
 
         # Ensure the batch size does not exceed the memory size and Proceed only if there is enough memory to start training.
         if batch_size > len(self.Qvalue) or len(self.Qvalue) < batch_size:

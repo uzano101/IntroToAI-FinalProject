@@ -3,6 +3,8 @@ import sys
 import time
 import pygame
 import random
+
+import TetrisGame
 from DQLAgent import DQLAgent
 from GeneticAgent import GeneticAgent
 from TetrisGame import Tetris
@@ -13,108 +15,155 @@ pygame.init()
 DQL_AGENT = "DQL"
 GENETIC_AGENT = "GENETIC"
 
-# Configuration
-GRID_WIDTH = 10
-GRID_HEIGHT = 20
-BLOCK_SIZE = 25
-CUBE_SIZE = 20
-FRAME_WIDTH = 4
-INTERNAL_PADDING = 2
-UI_WIDTH = 260
+# Configuration for the enlarged screen (multiplied by 4)
+SCREEN_WIDTH = 261 * 2
+SCREEN_HEIGHT = 365 * 1.5
 
-# Calculated dimensions
-GRID_PIXEL_WIDTH = GRID_WIDTH * BLOCK_SIZE + 2 * INTERNAL_PADDING
-GRID_PIXEL_HEIGHT = GRID_HEIGHT * BLOCK_SIZE + 2 * INTERNAL_PADDING
-SCREEN_WIDTH = GRID_PIXEL_WIDTH + UI_WIDTH + 2 * FRAME_WIDTH
-SCREEN_HEIGHT = GRID_PIXEL_HEIGHT + 2 * FRAME_WIDTH
-CUBE_OFFSET = (BLOCK_SIZE - CUBE_SIZE) // 2  # Offset to center the cube in the block
+# Colors for Lego Theme
+LEGO_COLORS = [(233, 30, 99), (33, 150, 243), (255, 193, 7), (76, 175, 80), (255, 87, 34)]
+LEGO_HOVER_COLORS = [(244, 143, 177), (100, 181, 246), (255, 213, 79), (129, 199, 132), (255, 138, 101)]
+BUTTON_COLOR = LEGO_COLORS[0]  # Bright pink like a Lego block
+BUTTON_HOVER_COLOR = (255, 64, 129)  # Slightly darker hover color
+SLIDER_COLOR = LEGO_COLORS[1]  # Blue slider color
+SLIDER_HANDLE_COLOR = LEGO_COLORS[2]  # Yellow handle color
+TEXT_COLOR = (0, 0, 0)  # White text for good contrast
+BACKGROUND_COLOR = (240, 240, 240)  # Light grey background like a Lego baseplate
 
-# Colors
-BLACK = (0, 0, 0)
-WHITE = (255, 255, 255)
-GRAY = (200, 200, 200)
-BLUE = (0, 0, 255)
-GREEN = (0, 255, 0)
-RED = (255, 0, 0)
-
-# Fonts
-font = pygame.font.SysFont('Arial', 32)
-small_font = pygame.font.SysFont('Arial', 24)
+# Fonts (adjusted for the new larger screen)
+headline_font = pygame.font.SysFont('Bebas Neue', 100)  # Larger headline font
+button_font = pygame.font.SysFont('Bebas Neue', 35)  # Larger headline font
+message_font = pygame.font.SysFont('Bebas Neue', 50)  # Larger headline font
+small_font = pygame.font.SysFont('Bebas Neue', 30, bold=True)  # Larger font for labels
 
 # Screen setup
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption('Tetris')
+pygame.display.set_caption('Tetris Lego Theme')
 
-# Button class to create interactive buttons
+# Load Lego Background Image
+lego_background_image = pygame.image.load('backgroung.jpg')
+
+
+# Function to draw the background image to fit the screen
+def draw_background():
+    screen.blit(pygame.transform.scale(lego_background_image, (SCREEN_WIDTH, SCREEN_HEIGHT)), (0, 0))
+
+
+# Button class to create Lego-themed interactive buttons
 class Button:
-    def __init__(self, text, x, y, width, height, color):
+    def __init__(self, text, x, y, width, height, color, hover_color):
         self.text = text
         self.rect = pygame.Rect(x, y, width, height)
         self.color = color
+        self.hover_color = hover_color
+        self.current_color = color
 
     def draw(self):
-        pygame.draw.rect(screen, self.color, self.rect)
-        text_surf = font.render(self.text, True, WHITE)
+        pygame.draw.rect(screen, self.current_color, self.rect, border_radius=5)  # Rounded corners
+        pygame.draw.rect(screen, (0, 0, 0), self.rect, 4, border_radius=5)  # Black outline for a 3D Lego effect
+        text_surf = button_font.render(self.text, True, TEXT_COLOR)
         screen.blit(text_surf, (self.rect.x + (self.rect.width - text_surf.get_width()) // 2,
                                 self.rect.y + (self.rect.height - text_surf.get_height()) // 2))
 
-    def is_clicked(self, pos):
+    def is_hovered(self, pos):
         return self.rect.collidepoint(pos)
 
-# Slider class to create interactive sliders
+    def update(self, pos):
+        if self.is_hovered(pos):
+            self.current_color = self.hover_color
+        else:
+            self.current_color = self.color
+
+
+# Slider class to create Lego-themed interactive sliders
 class Slider:
-    def __init__(self, x, y, width, min_val, max_val, initial_val):
+    def __init__(self, x, y, width, min_val, max_val, initial_val, integer=False):
         self.rect = pygame.Rect(x, y, width, 10)
         self.min_val = min_val
         self.max_val = max_val
         self.value = initial_val
-        self.slider_rect = pygame.Rect(x + (initial_val - min_val) / (max_val - min_val) * width, y - 10, 10, 30)
+        self.integer = integer  # Flag to determine if the slider should handle integer values only
+        self.slider_rect = pygame.Rect(x + (initial_val - min_val) / (max_val - min_val) * width - 10, y - 5, 20,
+                                       20)  # Larger, blocky handle
+        self.dragging = False
 
     def draw(self):
-        pygame.draw.rect(screen, GRAY, self.rect)
-        pygame.draw.rect(screen, RED, self.slider_rect)
+        pygame.draw.rect(screen, SLIDER_COLOR, self.rect, border_radius=10)  # Rounded slider bar
+        pygame.draw.rect(screen, SLIDER_HANDLE_COLOR, self.slider_rect, border_radius=5)  # Blocky handle
+        pygame.draw.rect(screen, (0, 0, 0), self.slider_rect, 2, border_radius=5)  # Black outline for handle
         # Draw current value of the slider
-        value_text = small_font.render(f'{self.value:.2f}' if isinstance(self.value, float) else str(int(self.value)), True, WHITE)
-        screen.blit(value_text, (self.slider_rect.x + 15, self.slider_rect.y - 10))
+        value_display = int(self.value) if self.integer else f'{self.value:.2f}'
+        value_text = small_font.render(str(value_display), True, TEXT_COLOR)
+        screen.blit(value_text, (self.rect.x + 170, self.rect.y - 5))
 
     def move(self, pos):
-        if self.rect.collidepoint(pos):
-            self.slider_rect.x = max(self.rect.x, min(pos[0], self.rect.x + self.rect.width))
-            self.value = self.min_val + (self.slider_rect.x - self.rect.x) / self.rect.width * (self.max_val - self.min_val)
+        if self.dragging:
+            # Update the slider position
+            self.slider_rect.x = max(self.rect.x - 10, min(pos[0], self.rect.x - 10 + self.rect.width))
+            # Update the slider value based on the new position
+            raw_value = self.min_val + (self.slider_rect.x - self.rect.x + 10) / self.rect.width * (
+                        self.max_val - self.min_val)
+            self.value = int(raw_value) if self.integer else raw_value
 
-# Initialize buttons and sliders
-play_button = Button('Start', SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT - 100, 100, 50, GREEN)
-quit_button = Button('Quit', SCREEN_WIDTH // 2 + 50, SCREEN_HEIGHT - 100, 100, 50, RED)
+    def check_for_input(self, pos):
+        # Check if slider handle is clicked
+        if self.slider_rect.collidepoint(pos):
+            self.dragging = True
+
+    def release(self):
+        self.dragging = False
+
+
+# Initialize buttons and sliders with new dimensions and positions for larger screen
+play_button = Button('Start', SCREEN_WIDTH // 2 - 200, SCREEN_HEIGHT - 50, 150, 40, LEGO_COLORS[3], LEGO_HOVER_COLORS[3])
+quit_button = Button('Quit', SCREEN_WIDTH // 2 + 50, SCREEN_HEIGHT - 50, 150, 40, BUTTON_COLOR, BUTTON_HOVER_COLOR)
 
 # Agent selection buttons
-dql_button = Button('Deep Q-Learning', SCREEN_WIDTH // 2 - 230, 100, 220, 50, BLUE)
-genetic_button = Button('Genetic', SCREEN_WIDTH // 2 + 20, 100, 200, 50, BLUE)
+dql_button = Button('Deep Q-Learning', SCREEN_WIDTH // 2 - 240, 200, 230, 40, LEGO_COLORS[1], LEGO_HOVER_COLORS[1])
+genetic_button = Button('Genetic', SCREEN_WIDTH // 2 + 10, 200, 230, 40, LEGO_COLORS[2], LEGO_HOVER_COLORS[2])
 
 # Sliders for Deep Q-Learning parameters
-alpha_slider = Slider(SCREEN_WIDTH // 2, 220, 200, 0, 1.0, 0.5)
-gamma_slider = Slider(SCREEN_WIDTH // 2, 270, 200, 0, 1.0, 0.5)
-alpha_decay_slider = Slider(SCREEN_WIDTH // 2, 320, 200, 0.001, 0.999, 0.5)
-batch_size_slider = Slider(SCREEN_WIDTH // 2, 370, 200, 1, 128, 64)
+alpha_slider = Slider(SCREEN_WIDTH // 2, 300, 150, 0, 1.0, 0.5)
+gamma_slider = Slider(SCREEN_WIDTH // 2, 350, 150, 0, 1.0, 0.5)
+alpha_decay_slider = Slider(SCREEN_WIDTH // 2, 400, 150, 0.001, 0.999, 0.5)
+batch_size_slider = Slider(SCREEN_WIDTH // 2, 450, 150, 1, 128, 64, integer=True)  # Batch size slider as integer
 
 # Slider for Genetic agent parameter
-generations_slider = Slider(SCREEN_WIDTH // 2, 200, 200, 10, 100, 50)
+generations_slider = Slider(SCREEN_WIDTH // 2 - 20, 300, 150, 10, 100, 50, integer=True)
 
 # Flags to control the display of sections
 selected_agent = None  # 'DQL' or 'Genetic'
+
 
 def draw_text(text, font, color, x, y):
     text_surf = font.render(text, True, color)
     screen.blit(text_surf, (x, y))
 
+
 def start_page():
     running = True
     global selected_agent
+    colors = [LEGO_COLORS[random.randint(0, 4)] for i in range(6)]
 
-    while running:
-        screen.fill(BLACK)
-        draw_text('Tetris Game', font, WHITE, SCREEN_WIDTH // 2 - 100, 30)
+    while running and not TetrisGame.go_to_home_flag:
+        draw_background()  # Draw the Lego background image
+        draw_text('T', headline_font, colors[0], SCREEN_WIDTH // 2 - 130, 50)  # Larger headline centered
+        draw_text('E', headline_font, colors[1], SCREEN_WIDTH // 2 - 83, 50)  # Larger headline centered
+        draw_text('T', headline_font, colors[2], SCREEN_WIDTH // 2 - 30, 50)  # Larger headline centered
+        draw_text('R', headline_font, colors[3], SCREEN_WIDTH // 2 + 20, 50)  # Larger headline centered
+        draw_text('I', headline_font, colors[4], SCREEN_WIDTH // 2 + 70, 50)  # Larger headline centered
+        draw_text('S', headline_font, colors[5], SCREEN_WIDTH // 2 + 90, 50)  # Larger headline centered
 
-        # Draw buttons
+        if not selected_agent:
+            # make the color of the text change
+            message_colors = [LEGO_COLORS[random.randint(0, 4)] for i in range(6)]
+            draw_text('Select an Agent', message_font, message_colors[random.randint(0, 5)], SCREEN_WIDTH // 2 - 130, 150)
+        # Draw buttons with hover effect
+        mouse_pos = pygame.mouse.get_pos()
+        play_button.update(mouse_pos)
+        quit_button.update(mouse_pos)
+        dql_button.update(mouse_pos)
+        genetic_button.update(mouse_pos)
+
         play_button.draw()
         quit_button.draw()
         dql_button.draw()
@@ -122,46 +171,60 @@ def start_page():
 
         # Draw configuration sections based on selected agent
         if selected_agent == 'DQL':
-            draw_text('Alpha (Learning Rate):', small_font, WHITE, SCREEN_WIDTH // 2 - 250, 200)
+            draw_text('Epsilon:', small_font, TEXT_COLOR, SCREEN_WIDTH // 2 - 230, 295)
             alpha_slider.draw()
-            draw_text('Gamma :', small_font, WHITE, SCREEN_WIDTH // 2 - 250, 250)
+            draw_text('Gamma:', small_font, TEXT_COLOR, SCREEN_WIDTH // 2 - 230, 345)
             gamma_slider.draw()
-            draw_text('Alpha Decay Factor:', small_font, WHITE, SCREEN_WIDTH // 2 - 250, 300)
+            draw_text('Epsilon Decay Factor:', small_font, TEXT_COLOR, SCREEN_WIDTH // 2 - 230, 395)
             alpha_decay_slider.draw()
-            draw_text('Batch Size:', small_font, WHITE, SCREEN_WIDTH // 2 - 250, 350)
+            draw_text('Batch Size:', small_font, TEXT_COLOR, SCREEN_WIDTH // 2 - 230, 445)
             batch_size_slider.draw()
 
         elif selected_agent == 'Genetic':
-            draw_text('Population:', small_font, WHITE, SCREEN_WIDTH // 2 - 250, 200)
+            draw_text('Population:', small_font, TEXT_COLOR, SCREEN_WIDTH // 2 - 200, 295)
             generations_slider.draw()
 
         # Event handling
+        mouse_pos = pygame.mouse.get_pos()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                mouse_pos = pygame.mouse.get_pos()
-
-                if play_button.is_clicked(mouse_pos):
+                if play_button.is_hovered(mouse_pos):
                     start_game()
-                elif quit_button.is_clicked(mouse_pos):
+                elif quit_button.is_hovered(mouse_pos):
                     pygame.quit()
                     sys.exit()
-                elif dql_button.is_clicked(mouse_pos):
+                elif dql_button.is_hovered(mouse_pos):
                     selected_agent = 'DQL'
-                elif genetic_button.is_clicked(mouse_pos):
+                elif genetic_button.is_hovered(mouse_pos):
                     selected_agent = 'Genetic'
                 elif selected_agent == 'DQL':
-                    # Controll the sliders using dragging the mouse
-                    alpha_slider.move(mouse_pos)
-                    gamma_slider.move(mouse_pos)
-                    alpha_decay_slider.move(mouse_pos)
-                    batch_size_slider.move(mouse_pos)
+                    alpha_slider.check_for_input(mouse_pos)
+                    gamma_slider.check_for_input(mouse_pos)
+                    alpha_decay_slider.check_for_input(mouse_pos)
+                    batch_size_slider.check_for_input(mouse_pos)
                 elif selected_agent == 'Genetic':
-                    generations_slider.move(mouse_pos)
+                    generations_slider.check_for_input(mouse_pos)
+            elif event.type == pygame.MOUSEBUTTONUP:
+                alpha_slider.release()
+                gamma_slider.release()
+                alpha_decay_slider.release()
+                batch_size_slider.release()
+                generations_slider.release()
+
+            # Update sliders while dragging
+        if selected_agent == 'DQL':
+            alpha_slider.move(mouse_pos)
+            gamma_slider.move(mouse_pos)
+            alpha_decay_slider.move(mouse_pos)
+            batch_size_slider.move(mouse_pos)
+        elif selected_agent == 'Genetic':
+            generations_slider.move(mouse_pos)
 
         pygame.display.flip()
+
 
 def start_game():
     global selected_agent
