@@ -10,7 +10,7 @@ DEFAULT_WEIGHTS = {
 }
 
 
-#TODO:  change reward system and add the score to the reward and complete lines deliver from the game.
+# TODO:  change reward system and add the score to the reward and complete lines deliver from the game.
 
 class RewardSystem:
 
@@ -23,6 +23,7 @@ class RewardSystem:
         current_holes = self.calculate_holes(current_state.grid)
         current_bumpiness = self.calculate_bumpiness(current_state.grid)
         highest_point = self.calculate_highest_point(current_state.grid)
+        etp_score = self.calculate_etp(current_state)
 
         # Total Reward Calculation
         total_reward = (
@@ -31,6 +32,7 @@ class RewardSystem:
                 - (weights['holes'] * current_holes)
                 - (weights['bumpiness'] * current_bumpiness)
                 - (weights['highest_point'] * highest_point)
+                + (weights['etp_score'] * etp_score)
         )
 
         return total_reward
@@ -98,3 +100,31 @@ class RewardSystem:
 
     def calculate_clear_lines(self, grid):
         return sum(1 for row in grid if 0 not in row)
+
+    def calculate_etp(self, state):
+        """Calculate the edge touching points (ETP) for the current tetrimino in the given state."""
+        grid = state.grid
+        piece_matrix = state.current_tetrimino['matrix']
+        x = state.current_tetrimino['x']
+        y = state.current_tetrimino['y']
+        part_height = len(piece_matrix)
+        part_width = len(piece_matrix[0])
+        counter = 0
+
+        # Iterate over each block in the piece matrix and its surrounding area
+        for py in range(-1, part_height + 1):
+            for px in range(-1, part_width + 1):
+                by, bx = y + py, x + px
+                if (bx < 0 or bx >= GRID_WIDTH or by < 0 or by >= GRID_HEIGHT or (
+                        0 <= by < GRID_HEIGHT and 0 <= bx < GRID_WIDTH and grid[by][bx] != 0)):
+                    is_full = True
+                else:
+                    is_full = False
+
+                if is_full:
+                    for dy, dx in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                        temp_y, temp_x = py + dy, px + dx
+                        if 0 <= temp_y < part_height and 0 <= temp_x < part_width and piece_matrix[temp_y][temp_x]:
+                            counter += 1
+
+        return counter
