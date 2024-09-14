@@ -2,16 +2,15 @@ GRID_WIDTH = 10
 GRID_HEIGHT = 20
 
 DEFAULT_WEIGHTS = {'aggregate_height': 1.0216828929347057,
-                    'complete_lines': 2.2434697533655767,
+                   'complete_lines': 2.2434697533655767,
                    'holes': 1.6858774317691887,
                    'bumpiness': 0.6698899926251242,
                    'highest_point': 0.026163123460452898,
                    'new_holes': 1}
 
 
-# TODO:  change reward system and add the score to the reward and complete lines deliver from the game.
-
 class RewardSystem:
+    """ Class that calculates the reward for a given state. """
 
     def calculate_reward(self, current_state, previous_state=None, weights=None):
         if weights is None:
@@ -95,6 +94,7 @@ class RewardSystem:
         return isolation_score
 
     def calculate_clear_lines(self, grid):
+        """Calculate the number of lines that are fully filled with blocks."""
         return sum(1 for row in grid if 0 not in row)
 
     def calculate_etp(self, state):
@@ -125,16 +125,7 @@ class RewardSystem:
         return counter
 
     def calculate_new_holes(self, previous_grid, current_grid, tetrimino):
-        """
-        Calculate the number of new holes created directly beneath the newly placed tetromino.
-        A new hole is defined as an empty space in the current grid below a part of the tetromino,
-        where there was no block directly above it in the previous grid.
-
-        :param previous_grid: The grid before placing the new tetromino.
-        :param current_grid: The grid after placing the new tetromino.
-        :param tetrimino: A dictionary representing the tetromino with its matrix and position {'matrix': [[...]], 'x': int, 'y': int}.
-        :return: The number of new holes created beneath the tetromino.
-        """
+        """Calculate the number of new holes created directly beneath the newly placed tetromino."""
         new_holes = 0
         piece_matrix = tetrimino['matrix']
         x = tetrimino['x']
