@@ -1,13 +1,12 @@
 GRID_WIDTH = 10
 GRID_HEIGHT = 20
 
-DEFAULT_WEIGHTS = {'aggregate_height': 1.027899438137491,
-                   'complete_lines': 4,
+DEFAULT_WEIGHTS = {'aggregate_height': 1.0216828929347057,
+                    'complete_lines': 2.2434697533655767,
                    'holes': 1.6858774317691887,
                    'bumpiness': 0.6698899926251242,
                    'highest_point': 0.026163123460452898,
-                   'etp_score': 0.4524841496903227,
-                   'new_holes': 2}
+                   'new_holes': 1}
 
 
 # TODO:  change reward system and add the score to the reward and complete lines deliver from the game.
@@ -34,7 +33,7 @@ class RewardSystem:
                 - (weights['bumpiness'] * current_bumpiness)
                 - (weights['highest_point'] * highest_point)
                 - (weights['new_holes']) * new_holes
-                + (weights['etp_score'] * etp_score)
+                # + (weights['etp_score'] * etp_score)
         )
 
         return total_reward

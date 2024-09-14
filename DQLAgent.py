@@ -10,7 +10,7 @@ from RewardSystem import RewardSystem
 
 
 class DQLAgent:
-    def __init__(self, state_size=209, num_final_states=1, gamma=0.995, epsilon=1, epsilon_decay=0.95, batch_size=54):
+    def __init__(self, state_size=209, num_final_states=1, gamma=0.995, epsilon=1, epsilon_decay=0.95, batch_size=120):
         self.generation = 0
         self.state_size = state_size
         self.output = num_final_states
@@ -129,6 +129,7 @@ class DQLAgent:
             self.reward_system.calculate_bumpiness(grid),
             self.reward_system.calculate_aggregate_height(grid),
             self.reward_system.calculate_highest_point(grid),
-            self.reward_system.calculate_clear_lines(grid)
+            self.reward_system.calculate_clear_lines(grid),
+            # self.reward_system.calculate_etp(state)
         ]
         return np.array(grid_features)
