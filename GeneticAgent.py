@@ -83,8 +83,8 @@ class GeneticAgent():
 
     def train(self, score, cleared_lines, level):
         """ Train the agent with the final grid state. """
-        # TODO: think of a better way, no need to implement here, add score in the reward function.
-        if self.item_game == 2:
+        # TODO: bring back item_game to == 2.
+        if self.item_game == 0:
             avg_fitness = (self.calculate_fitness(score, cleared_lines, level) + self.total_item_fitness) / 3
             self.population[self.current_weights_index][1] = avg_fitness
             self.total_item_fitness = 0

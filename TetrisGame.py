@@ -526,5 +526,5 @@ class State:
 
 
 if __name__ == '__main__':
-    game = Tetris(DQL_AGENT)
+    game = Tetris(GENETIC_AGENT)
     game.run()

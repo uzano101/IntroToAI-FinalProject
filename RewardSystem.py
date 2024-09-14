@@ -30,9 +30,11 @@ class RewardSystem:
                 - (weights['holes'] * current_holes)
                 - (weights['bumpiness'] * current_bumpiness)
                 - (weights['highest_point'] * highest_point)
-                - (weights['new_holes']) * new_holes
-                # + (weights['etp_score'] * etp_score)
         )
+        if 'new_holes' in weights:
+            total_reward -= weights['new_holes'] * new_holes
+        if 'etp_score' in weights:
+            total_reward += weights['etp_score'] * etp_score
 
         return total_reward
 
