@@ -1,20 +1,18 @@
 GRID_WIDTH = 10
 GRID_HEIGHT = 20
 
-DEFAULT_WEIGHTS = {'aggregate_height': 1.027899438137491,
-                   'complete_lines': 4,
-                   'holes': 1.6858774317691887,
-                   'bumpiness': 0.6698899926251242,
-                   'highest_point': 0.026163123460452898,
-                   'etp_score': 0.4524841496903227,
-                   'new_holes': 2}
-
+DEFAULT_WEIGHTS = {'aggregate_height': 0.2638489398939668,
+                   'complete_lines': 1.6779530168219996,
+                   'holes': 1.1407294274788815,
+                   'bumpiness': 0.1646717469283948,
+                   'highest_point': 0.006402588878321655,
+                   'etp_score': 0.40935000526739124}
 
 # TODO:  change reward system and add the score to the reward and complete lines deliver from the game.
 
 class RewardSystem:
 
-    def calculate_reward(self, current_state, previous_state=None, weights=None):
+    def calculate_reward(self, current_state,weights=None):
         if weights is None:
             weights = DEFAULT_WEIGHTS  # Ensure weights is a dictionary
 
@@ -24,7 +22,6 @@ class RewardSystem:
         current_bumpiness = self.calculate_bumpiness(current_state.grid)
         highest_point = self.calculate_highest_point(current_state.grid)
         etp_score = self.calculate_etp(current_state)
-        new_holes = self.calculate_new_holes(previous_state.grid, current_state.grid, current_state.current_tetrimino) if previous_state is not None else 0
 
         # Total Reward Calculation
         total_reward = (
@@ -33,9 +30,7 @@ class RewardSystem:
                 - (weights['holes'] * current_holes)
                 - (weights['bumpiness'] * current_bumpiness)
                 - (weights['highest_point'] * highest_point)
-                - (weights['new_holes']) * new_holes
-                + (weights['etp_score'] * etp_score)
-        )
+                + (weights['etp_score'] * etp_score))
 
         return total_reward
 
@@ -131,42 +126,3 @@ class RewardSystem:
 
         return counter
 
-    def calculate_new_holes(self, previous_grid, current_grid, tetrimino):
-        """
-        Calculate the number of new holes created directly beneath the newly placed tetromino.
-        A new hole is defined as an empty space in the current grid below a part of the tetromino,
-        where there was no block directly above it in the previous grid.
-
-        :param previous_grid: The grid before placing the new tetromino.
-        :param current_grid: The grid after placing the new tetromino.
-        :param tetrimino: A dictionary representing the tetromino with its matrix and position {'matrix': [[...]], 'x': int, 'y': int}.
-        :return: The number of new holes created beneath the tetromino.
-        """
-        new_holes = 0
-        piece_matrix = tetrimino['matrix']
-        x = tetrimino['x']
-        y = tetrimino['y']
-        part_height = len(piece_matrix)
-        part_width = len(piece_matrix[0])
-
-        # Iterate over each block in the tetromino matrix
-        for py in range(part_height):
-            for px in range(part_width):
-                if piece_matrix[py][px] != 0:  # If this is part of the tetromino
-                    grid_x = x + px
-                    grid_y = y + py
-
-                    # Check the space directly below this block if it exists within grid bounds
-                    if grid_y + 1 < GRID_HEIGHT:
-                        # In the current grid, the space below the block is empty
-                        if current_grid[grid_y + 1][grid_x] == 0:
-                            # In the previous grid, there was no block directly above this empty space
-                            # (i.e., the space was already empty or it was the top of the grid)
-                            for row in range(grid_y + 1):
-                                if previous_grid[row][grid_x] != 0:  # There was something above it before
-                                    break
-                            else:
-                                # If there was nothing above this space in the previous grid, it's a new hole
-                                new_holes += 1
-
-        return new_holes

@@ -390,10 +390,7 @@ class Tetris:
             self.screen.blit(generation_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 170, 440))
 
     def get_next_tetrimino_place_by_agent(self):
-        if self.chosen_agent == GENETIC_AGENT:
-            lock_state = self.agent.choose_best_final_state(self.current_state, self.get_all_successor_states())
-        else:
-            lock_state = self.agent.choose_best_final_state(self.get_all_successor_states())
+        lock_state = self.agent.choose_best_final_state(self.get_all_successor_states())
         self.previous_state = self.current_state
         self.set_tetrimino_to_state(lock_state)
 
@@ -589,5 +586,5 @@ class State:
 
 
 if __name__ == '__main__':
-    game = Tetris(DQL_AGENT)  # Change agent type to run with different agents
+    game = Tetris(GENETIC_AGENT)  # Change agent type to run with different agents
     game.run()

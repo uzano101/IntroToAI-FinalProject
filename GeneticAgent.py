@@ -38,13 +38,13 @@ class GeneticAgent():
             population.append([weights, 0])
         return population
 
-    def choose_best_final_state(self, current_state, possible_final_states):
+    def choose_best_final_state(self, possible_final_states):
         # For each possible state, calculate its fitness based on the current weights
         best_state = None
         best_score = float('-inf')
 
         for state in possible_final_states:
-            score = self.rewardSystem.calculate_reward(state, previous_state=current_state, weights=self.current_weights)
+            score = self.rewardSystem.calculate_reward(state, weights=self.current_weights)
             if score > best_score or best_state is None:
                 best_score = score
                 best_state = state
