@@ -4,6 +4,7 @@
 This project implements AI agents for playing the classic game of Tetris. Our goal is to develop a system that can arrange falling blocks in the best possible way to maximize the score by clearing as many rows as possible. We implemented two models to solve this problem: a Genetic Algorithm and a Deep Q-Learning (DQL) Agent.
 
 ## Demo
+![Untitledvideo-MadewithClipchamp17-ezgif com-resize](https://github.com/user-attachments/assets/ff7a34fe-d876-4fbd-b2e9-5aed74d9587d)
 
 ## Requirements
 - Numpy
