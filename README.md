@@ -1,11 +1,44 @@
-# IntroToAI-FinalProject
+# IntroToAI - FinalProject - Tetris AI
 
-## 1. Introduction
-Tetris is one of those classic games that everyone knows, but it’s also surprisingly challenging when you dig into it. The game’s simple concept—fitting falling blocks together—hides a lot of complexity. This complexity, combined with the need to make quick decisions as the game speeds up, makes Tetris a really interesting problem for AI.
+## Overview
+This project implements AI agents for playing the classic game of Tetris. Our goal is to develop a system that can arrange falling blocks in the best possible way to maximize the score by clearing as many rows as possible. We implemented two models to solve this problem: a Genetic Algorithm and a Deep Q-Learning (DQL) Agent.
 
-Our interest in this problem was sparked by a recent event. On December 21, 2023, a 13-year-old named Willis Gibson made headlines when he won the game by playing the old version of Tetris on Nintendo for about 38 minutes, eventually causing the game to crash. This impressive feat got us thinking: could we design an AI that could not only match but possibly outperform a human player like Willis? That challenge, combined with the desire to explore AI techniques, led us to choose Tetris as the focus of our project.
+## Demo
 
-Another layer of complexity comes from the scoring system in Tetris. The more rows you clear at once, the higher your score. This is something human players naturally aim for—stacking blocks in a way that lets them clear multiple rows at once. For our AI, learning this strategy is far from trivial. It requires the agent not just to avoid immediate game-over scenarios but also to plan ahead and make moves that will set up future multi-row clears. Getting the AI to think like a human in this way adds a significant challenge and makes the problem even more interesting.
+## Requirements
+- Numpy
+- Tensorflow
+- Pygame
+  
+## Installation
 
-We’re starting with deep Q-learning, a method from reinforcement learning that’s been successful in other games. The idea here is that the AI will learn from playing the game, gradually improving its understanding of what moves are likely to lead to better outcomes. Deep Q-learning uses a neural network to estimate the best actions to take, which is helpful in a game like Tetris where the number of possible moves and outcomes is huge.
--- TO ADD : another model --
+To run the project, follow these steps:
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/uzano101/tetris-ai-project.git
+
+2. Install requirements:
+   ```bash
+   pip install -r requirements.txt
+
+4. Run the project:
+   ```bash
+   python Main.py
+
+## Models
+1. **Genetic Algorithm**:
+   - Uses evolution principles like selection, crossover, and mutation to improve decision-making over generations.
+   - Heuristics include: Aggregate Height, Holes, Complete Lines, Bumpiness, Highest Point, and Neighbors.
+
+2. **Deep Q-Learning (DQL) Agent**:
+   - Uses a neural network to predict the best next state, balancing exploration and exploitation.
+   - The agent learns from experience by storing game states and updating the Q-values using the Bellman Equation.
+
+### Implemantation
+- **Genetic Algorithm**: Optimizes weights for heuristics over multiple generations.
+- **DQL Agent**: Learns from game experience and predicts the optimal move for each state.
+
+### Results
+
+
