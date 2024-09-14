@@ -68,7 +68,8 @@ class GeneticAgent():
         ranked_population = sorted(self.population, key=lambda x: x[1], reverse=True)
 
         # Select parents for reproduction, select the best two of them.
-        next_population = ranked_population[:2]
+        next_population = ranked_population[:3]
+        ranked_population=ranked_population[:7]
 
         # Generate new population through crossover and mutation
         while len(next_population) < self.population_size:
