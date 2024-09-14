@@ -125,21 +125,13 @@ class Button:
         if self.is_hovered(pos) and self.action:
             self.action()
 
-
-# Game control flags
-go_to_home_flag = False
 exit_game_flag = False
-go_to_home = False
 
 # Actions for the buttons
 # def go_to_home():
 #     global go_to_home_flag
 #     go_to_home_flag = True
 #     print("Go to Home:  " + str(go_to_home_flag))
-def set_go_to_home(go_to_home=True):
-    global go_to_home_flag
-    go_to_home_flag = True
-    print("Go to Home:  " + str(go_to_home_flag))
 
 
 def exit_game():
@@ -148,8 +140,8 @@ def exit_game():
 
 
 # Create Home and Exit buttons
-home_button = Button('Home', SCREEN_WIDTH - 200, SCREEN_HEIGHT - 100, 80, 40, LEGO_COLORS[3], (255, 183, 77), set_go_to_home)
-exit_button = Button('Exit', SCREEN_WIDTH - 100, SCREEN_HEIGHT - 100, 80, 40, LEGO_COLORS[0], (244, 67, 54), exit_game)
+
+exit_button = Button('Exit', SCREEN_WIDTH - 180, SCREEN_HEIGHT - 45, 80, 40, LEGO_COLORS[0], (244, 67, 54), exit_game)
 
 class Tetris:
     def __init__(self, agent):
@@ -390,10 +382,7 @@ class Tetris:
             self.screen.blit(generation_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 170, 440))
 
     def get_next_tetrimino_place_by_agent(self):
-        if self.chosen_agent == GENETIC_AGENT:
-            lock_state = self.agent.choose_best_final_state(self.current_state, self.get_all_successor_states())
-        else:
-            lock_state = self.agent.choose_best_final_state(self.get_all_successor_states())
+        lock_state = self.agent.choose_best_final_state(self.get_all_successor_states())
         self.previous_state = self.current_state
         self.set_tetrimino_to_state(lock_state)
 
@@ -409,7 +398,6 @@ class Tetris:
                     self.export_statistics_to_csv()
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
-                home_button.check_click(mouse_pos)
                 exit_button.check_click(mouse_pos)
 
         if exit_game_flag:
@@ -442,15 +430,13 @@ class Tetris:
 
         # Draw the Home and Exit buttons
         mouse_pos = pygame.mouse.get_pos()
-        home_button.update(mouse_pos)
         exit_button.update(mouse_pos)
-        home_button.draw(self.screen)
         exit_button.draw(self.screen)
 
         pygame.display.flip()
 
     def run(self):
-        while not self.continue_playing and not go_to_home_flag and not exit_game_flag:
+        while not self.continue_playing and not exit_game_flag:
             if not self.game_over and self.score <= 99999999:
                 if self.level_at_999999 == 0 and self.score >= 99999999:
                     self.level_at_999999 = self.level
@@ -589,5 +575,5 @@ class State:
 
 
 if __name__ == '__main__':
-    game = Tetris(DQL_AGENT)  # Change agent type to run with different agents
+    game = Tetris(GENETIC_AGENT)  # Change agent type to run with different agents
     game.run()

@@ -42,7 +42,7 @@ class DQLAgent:
         """
             Updates agent's experience (state, next_state, reward, done).
         """
-        reward = self.reward_system.calculate_reward(next_state, previous_state=state)
+        reward = self.reward_system.calculate_reward(next_state)
         self.Qvalue.append((state, next_state, reward, done))
 
     def predict_value(self, state):
