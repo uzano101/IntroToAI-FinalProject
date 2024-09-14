@@ -1,5 +1,5 @@
 from StartPage import start_page
-from TetrisGame import exit_game_flag, go_to_home_flag
+from TetrisGame import exit_game_flag, go_to_home_flag, set_go_to_home
 
 
 def run():
@@ -9,6 +9,7 @@ def run():
     while not exit_game_flag:
         print(go_to_home_flag)
         if go_to_home_flag:
+            set_go_to_home(False)
             start_page()
 
 

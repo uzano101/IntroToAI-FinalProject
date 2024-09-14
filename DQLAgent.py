@@ -1,3 +1,5 @@
+import heapq
+
 import numpy as np
 import random
 from collections import deque
@@ -8,7 +10,7 @@ from RewardSystem import RewardSystem
 
 
 class DQLAgent:
-    def __init__(self, state_size=209, num_final_states=1, gamma=0.95, epsilon=1, epsilon_decay=0.995, batch_size=108):
+    def __init__(self, state_size=209, num_final_states=1, gamma=0.995, epsilon=1, epsilon_decay=0.95, batch_size=54):
         self.generation = 0
         self.state_size = state_size
         self.output = num_final_states
@@ -40,7 +42,7 @@ class DQLAgent:
         """
             Updates agent's experience (state, next_state, reward, done).
         """
-        reward = self.reward_system.calculate_reward(state)
+        reward = self.reward_system.calculate_reward(next_state, previous_state=state)
         self.Qvalue.append((state, next_state, reward, done))
 
     def predict_value(self, state):
@@ -79,11 +81,13 @@ class DQLAgent:
         """
         batch_size = self.batch_size
 
-        # Ensure the batch size does not exceed the memory size and Proceed only if there is enough memory to start training.
+        # Ensure the batch size does not exceed the memory size and Proceed only if there is enough memory to start
+        # training.
         if batch_size > len(self.Qvalue) or len(self.Qvalue) < batch_size:
             return
 
         batch = random.sample(self.Qvalue, batch_size)
+        # batch = heapq.nlargest(batch_size, self.Qvalueue, key=lambda memory: memory[2])
         x, y = self.build_training_batch(batch)
 
         self.model.fit(np.array(x), np.array(y), batch_size=batch_size, epochs=epochs, verbose=0)
@@ -91,6 +95,8 @@ class DQLAgent:
         # Update epsilon to reduce exploration over time
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
+        # if self.epsilon < 0.02:
+        #     self.epsilon = 0.06
 
     def build_training_batch(self, batch):
         """
@@ -125,5 +131,4 @@ class DQLAgent:
             self.reward_system.calculate_highest_point(grid),
             self.reward_system.calculate_clear_lines(grid)
         ]
-
         return np.array(grid_features)

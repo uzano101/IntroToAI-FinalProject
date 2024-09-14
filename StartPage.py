@@ -4,10 +4,9 @@ import time
 import pygame
 import random
 
-import TetrisGame
 from DQLAgent import DQLAgent
 from GeneticAgent import GeneticAgent
-from TetrisGame import Tetris
+from TetrisGame import Tetris, go_to_home_flag
 
 pygame.init()
 
@@ -101,7 +100,7 @@ class Slider:
             self.slider_rect.x = max(self.rect.x - 10, min(pos[0], self.rect.x - 10 + self.rect.width))
             # Update the slider value based on the new position
             raw_value = self.min_val + (self.slider_rect.x - self.rect.x + 10) / self.rect.width * (
-                        self.max_val - self.min_val)
+                    self.max_val - self.min_val)
             self.value = int(raw_value) if self.integer else raw_value
 
     def check_for_input(self, pos):
@@ -114,7 +113,8 @@ class Slider:
 
 
 # Initialize buttons and sliders with new dimensions and positions for larger screen
-play_button = Button('Start', SCREEN_WIDTH // 2 - 200, SCREEN_HEIGHT - 50, 150, 40, LEGO_COLORS[3], LEGO_HOVER_COLORS[3])
+play_button = Button('Start', SCREEN_WIDTH // 2 - 200, SCREEN_HEIGHT - 50, 150, 40, LEGO_COLORS[3],
+                     LEGO_HOVER_COLORS[3])
 quit_button = Button('Quit', SCREEN_WIDTH // 2 + 50, SCREEN_HEIGHT - 50, 150, 40, BUTTON_COLOR, BUTTON_HOVER_COLOR)
 
 # Agent selection buttons
@@ -144,7 +144,7 @@ def start_page():
     global selected_agent
     colors = [LEGO_COLORS[random.randint(0, 4)] for i in range(6)]
 
-    while running and not TetrisGame.go_to_home_flag:
+    while not go_to_home_flag:
         draw_background()  # Draw the Lego background image
         draw_text('T', headline_font, colors[0], SCREEN_WIDTH // 2 - 130, 50)  # Larger headline centered
         draw_text('E', headline_font, colors[1], SCREEN_WIDTH // 2 - 83, 50)  # Larger headline centered
@@ -156,7 +156,8 @@ def start_page():
         if not selected_agent:
             # make the color of the text change
             message_colors = [LEGO_COLORS[random.randint(0, 4)] for i in range(6)]
-            draw_text('Select an Agent', message_font, message_colors[random.randint(0, 5)], SCREEN_WIDTH // 2 - 130, 150)
+            draw_text('Select an Agent', message_font, message_colors[random.randint(0, 5)], SCREEN_WIDTH // 2 - 130,
+                      150)
         # Draw buttons with hover effect
         mouse_pos = pygame.mouse.get_pos()
         play_button.update(mouse_pos)
@@ -246,6 +247,7 @@ def start_game():
         return  # No agent selected
 
     game.run()
+
 
 if __name__ == '__main__':
     start_page()

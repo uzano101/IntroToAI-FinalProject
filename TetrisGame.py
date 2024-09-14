@@ -132,8 +132,11 @@ exit_game_flag = False
 go_to_home = False
 
 # Actions for the buttons
-
-def go_to_home():
+# def go_to_home():
+#     global go_to_home_flag
+#     go_to_home_flag = True
+#     print("Go to Home:  " + str(go_to_home_flag))
+def set_go_to_home(go_to_home=True):
     global go_to_home_flag
     go_to_home_flag = True
     print("Go to Home:  " + str(go_to_home_flag))
@@ -145,7 +148,7 @@ def exit_game():
 
 
 # Create Home and Exit buttons
-home_button = Button('Home', SCREEN_WIDTH - 200, SCREEN_HEIGHT - 100, 80, 40, LEGO_COLORS[3], (255, 183, 77), go_to_home)
+home_button = Button('Home', SCREEN_WIDTH - 200, SCREEN_HEIGHT - 100, 80, 40, LEGO_COLORS[3], (255, 183, 77), set_go_to_home)
 exit_button = Button('Exit', SCREEN_WIDTH - 100, SCREEN_HEIGHT - 100, 80, 40, LEGO_COLORS[0], (244, 67, 54), exit_game)
 
 class Tetris:
@@ -387,7 +390,10 @@ class Tetris:
             self.screen.blit(generation_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 170, 440))
 
     def get_next_tetrimino_place_by_agent(self):
-        lock_state = self.agent.choose_best_final_state(self.get_all_successor_states())
+        if self.chosen_agent == GENETIC_AGENT:
+            lock_state = self.agent.choose_best_final_state(self.current_state, self.get_all_successor_states())
+        else:
+            lock_state = self.agent.choose_best_final_state(self.get_all_successor_states())
         self.previous_state = self.current_state
         self.set_tetrimino_to_state(lock_state)
 
@@ -444,7 +450,7 @@ class Tetris:
         pygame.display.flip()
 
     def run(self):
-        while not self.continue_playing:
+        while not self.continue_playing and not go_to_home_flag and not exit_game_flag:
             if not self.game_over and self.score <= 99999999:
                 if self.level_at_999999 == 0 and self.score >= 99999999:
                     self.level_at_999999 = self.level
