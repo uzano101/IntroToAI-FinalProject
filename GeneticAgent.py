@@ -3,8 +3,8 @@ from RewardSystem import RewardSystem
 
 
 class GeneticAgent():
-    # cons tructor
-    def __init__(self, population_size=40, mutation_rate=0.1, crossover_rate=0.5):
+    # constructor
+    def __init__(self, population_size=10, mutation_rate=0.1, crossover_rate=0.5):
         self.population_size = population_size
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
@@ -67,7 +67,8 @@ class GeneticAgent():
         ranked_population = sorted(self.population, key=lambda x: x[1], reverse=True)
 
         # Select parents for reproduction, select the best two of them.
-        next_population = ranked_population[:4]
+        next_population = ranked_population[:3]
+        ranked_population=ranked_population[:7]
 
         # Generate new population through crossover and mutation
         while len(next_population) < self.population_size:
@@ -109,7 +110,8 @@ class GeneticAgent():
 
     def train(self, score, cleared_lines, level):
         # TODO: think of a better way, no need to implement here, add score in the reward function.
-        if self.item_game == 3:
+
+        if self.item_game == 2:
             avg_fitness = (self.calculate_fitness(score, cleared_lines, level) + self.total_item_fittness) / 3
             # Calculate fitness using the isolation score
             self.population[self.current_weights_index][1] = avg_fitness
