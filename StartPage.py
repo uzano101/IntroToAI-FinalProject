@@ -6,7 +6,7 @@ import random
 
 from DQLAgent import DQLAgent
 from GeneticAgent import GeneticAgent
-from TetrisGame import Tetris, go_to_home_flag
+from TetrisGame import Tetris
 
 pygame.init()
 
@@ -144,7 +144,7 @@ def start_page():
     global selected_agent
     colors = [LEGO_COLORS[random.randint(0, 4)] for i in range(6)]
 
-    while not go_to_home_flag:
+    while running:
         draw_background()  # Draw the Lego background image
         draw_text('T', headline_font, colors[0], SCREEN_WIDTH // 2 - 130, 50)  # Larger headline centered
         draw_text('E', headline_font, colors[1], SCREEN_WIDTH // 2 - 83, 50)  # Larger headline centered

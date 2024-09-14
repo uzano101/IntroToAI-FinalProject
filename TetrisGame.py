@@ -141,7 +141,7 @@ def exit_game():
 
 # Create Home and Exit buttons
 
-exit_button = Button('Exit', SCREEN_WIDTH - 150, SCREEN_HEIGHT - 50, 80, 40, LEGO_COLORS[0], (244, 67, 54), exit_game)
+exit_button = Button('Exit', SCREEN_WIDTH - 180, SCREEN_HEIGHT - 45, 80, 40, LEGO_COLORS[0], (244, 67, 54), exit_game)
 
 class Tetris:
     def __init__(self, agent):
@@ -398,7 +398,6 @@ class Tetris:
                     self.export_statistics_to_csv()
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
-                home_button.check_click(mouse_pos)
                 exit_button.check_click(mouse_pos)
 
         if exit_game_flag:
@@ -431,9 +430,7 @@ class Tetris:
 
         # Draw the Home and Exit buttons
         mouse_pos = pygame.mouse.get_pos()
-        home_button.update(mouse_pos)
         exit_button.update(mouse_pos)
-        home_button.draw(self.screen)
         exit_button.draw(self.screen)
 
         pygame.display.flip()
