@@ -31,8 +31,7 @@ class GeneticAgent():
                 'holes': random.uniform(0, 2),
                 'bumpiness': random.uniform(0, 1),
                 'highest_point': random.uniform(0, 1),
-                'etp_score': random.uniform(0, 2),
-                'new_holes': random.uniform(0, 3),
+                'etp_score': random.uniform(0, 2)
             }
 
             population.append([weights, 0])
