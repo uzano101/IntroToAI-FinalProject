@@ -64,7 +64,6 @@ class DQLAgent:
             for state in possible_final_states:
                 states_vector = self.convarte_state_to_vector(state)
 
-                # Ensure the input is of shape (1, 5) for prediction
                 states_vector = states_vector.reshape(1, -1)
 
                 value = self.predict_value(states_vector)
@@ -81,22 +80,16 @@ class DQLAgent:
         """
         batch_size = self.batch_size
 
-        # Ensure the batch size does not exceed the memory size and Proceed only if there is enough memory to start
-        # training.
         if batch_size > len(self.Qvalue) or len(self.Qvalue) < batch_size:
             return
 
         batch = random.sample(self.Qvalue, batch_size)
-        # batch = heapq.nlargest(batch_size, self.Qvalueue, key=lambda memory: memory[2])
         x, y = self.build_training_batch(batch)
 
         self.model.fit(np.array(x), np.array(y), batch_size=batch_size, epochs=epochs, verbose=0)
 
-        # Update epsilon to reduce exploration over time
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
-        # if self.epsilon < 0.02:
-        #     self.epsilon = 0.06
 
     def build_training_batch(self, batch):
         """
@@ -110,7 +103,6 @@ class DQLAgent:
             state_vector = self.convarte_state_to_vector(state).reshape(1, 5)
             target_qs = self.model.predict(state_vector)[0]
 
-            # Bellman equation to update Q-values
             target_qs[0] = reward if done else reward + self.gamma * np.max(next_qs[i])
 
             x.append(state_vector.flatten())

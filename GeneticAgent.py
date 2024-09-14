@@ -3,7 +3,6 @@ from RewardSystem import RewardSystem
 
 
 class GeneticAgent():
-    # constructor
     def __init__(self, population_size=10, mutation_rate=0.1, crossover_rate=0.5):
         self.population_size = population_size
         self.mutation_rate = mutation_rate
@@ -38,7 +37,6 @@ class GeneticAgent():
         return population
 
     def choose_best_final_state(self, possible_final_states):
-        # For each possible state, calculate its fitness based on the current weights
         best_state = None
         best_score = float('-inf')
 
@@ -58,27 +56,19 @@ class GeneticAgent():
         :param level: the level achieved in the game.
         :return: the reward for the game.
         """
-        # Include the accumulated isolation score in the fitness calculation
         return score
 
     def evolve_population(self):
         self.generation += 1
-        # Sort population based on fitness
         ranked_population = sorted(self.population, key=lambda x: x[1], reverse=True)
 
-        # Select parents for reproduction, select the best two of them.
         next_population = ranked_population[:3]
-        ranked_population=ranked_population[:7]
+        ranked_population = ranked_population[:7]
 
-        # Generate new population through crossover and mutation
         while len(next_population) < self.population_size:
             parent1 = self.selection(ranked_population)[0]
             parent2 = self.selection(ranked_population)[0]
-
-            # Crossover to create a child
             child = self.crossover(parent1, parent2) if random.random() < self.crossover_rate else parent1
-
-            # Apply mutation to the child
             child = self.mutate(child)
 
             next_population.append([child, 0])
@@ -86,13 +76,11 @@ class GeneticAgent():
         self.population = next_population
 
     def selection(self, ranked_population):
-        # Tournament selection
         tournament_size = 3
         selected = random.sample(ranked_population, tournament_size)
         return max(selected, key=lambda x: x[1])
 
     def crossover(self, parent1, parent2):
-        # Combine two sets of weights to produce a new set (crossover)
         child = {}
         for key in parent1:
             child[key] = parent1[key] if random.random() > 0.5 else parent2[key]
@@ -101,7 +89,6 @@ class GeneticAgent():
     def mutate(self, weights):
         for weight in weights:
             if random.random() < self.mutation_rate:
-                # Apply small changes to make the mutation.
                 weights[weight] *= random.uniform(0.8, 1.2)
         return weights
 
@@ -112,7 +99,6 @@ class GeneticAgent():
         # TODO: think of a better way, no need to implement here, add score in the reward function.
         if self.item_game == 2:
             avg_fitness = (self.calculate_fitness(score, cleared_lines, level) + self.total_item_fitness) / 3
-            # Calculate fitness using the isolation score
             self.population[self.current_weights_index][1] = avg_fitness
             self.total_item_fitness = 0
             self.item_game = 0

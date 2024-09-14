@@ -15,7 +15,7 @@ class RewardSystem:
 
     def calculate_reward(self, current_state, previous_state=None, weights=None):
         if weights is None:
-            weights = DEFAULT_WEIGHTS  # Ensure weights is a dictionary
+            weights = DEFAULT_WEIGHTS
 
         aggregate_height = self.calculate_aggregate_height(current_state.grid)
         cleared_lines = self.calculate_clear_lines(current_state.grid)
@@ -25,7 +25,6 @@ class RewardSystem:
         etp_score = self.calculate_etp(current_state)
         new_holes = self.calculate_new_holes(previous_state.grid, current_state.grid, current_state.current_tetrimino) if previous_state is not None else 0
 
-        # Total Reward Calculation
         total_reward = (
                 (weights['complete_lines'] * cleared_lines)
                 - (weights['aggregate_height'] * aggregate_height)
@@ -66,7 +65,7 @@ class RewardSystem:
         for y in range(GRID_HEIGHT):
             if any(grid[y][x] != 0 for x in range(GRID_WIDTH)):
                 return GRID_HEIGHT - y
-        return GRID_HEIGHT  # Return max height if no blocks are found
+        return GRID_HEIGHT
 
     def calculate_isolation_for_locked_shape(self, grid, locked_shape_info):
         """Calculate the isolation score for a single locked shape based on its position on the grid."""
@@ -74,26 +73,22 @@ class RewardSystem:
         shape_x, shape_y = locked_shape_info['x'], locked_shape_info['y']
         isolation_score = 0
 
-        # Direction vectors for the 4 direct neighbors (up, down, left, right)
         directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
-        # Check isolation for the entire shape
         for y in range(len(shape_matrix)):
             for x in range(len(shape_matrix[0])):
-                if shape_matrix[y][x] != 0:  # If this is part of the shape
+                if shape_matrix[y][x] != 0:
                     by, bx = shape_y + y, shape_x + x
                     empty_neighbors = 0
                     total_neighbors = 0
 
-                    # Check all 4 possible direct neighbors
                     for dy, dx in directions:
                         ny, nx = by + dy, bx + dx
-                        if 0 <= ny < GRID_HEIGHT and 0 <= nx < GRID_WIDTH:  # Ensure neighbor is within grid bounds
+                        if 0 <= ny < GRID_HEIGHT and 0 <= nx < GRID_WIDTH:
                             total_neighbors += 1
                             if grid[ny][nx] == 0:
                                 empty_neighbors += 1
 
-                    # If block has 2/3 or more empty neighbors, it is considered isolated
                     if total_neighbors > 0 and empty_neighbors >= (total_neighbors * 2 / 3):
                         isolation_score += 1
 
@@ -112,7 +107,6 @@ class RewardSystem:
         part_width = len(piece_matrix[0])
         counter = 0
 
-        # Iterate over each block in the piece matrix and its surrounding area
         for py in range(-1, part_height + 1):
             for px in range(-1, part_width + 1):
                 by, bx = y + py, x + px
@@ -148,24 +142,18 @@ class RewardSystem:
         part_height = len(piece_matrix)
         part_width = len(piece_matrix[0])
 
-        # Iterate over each block in the tetromino matrix
         for py in range(part_height):
             for px in range(part_width):
-                if piece_matrix[py][px] != 0:  # If this is part of the tetromino
+                if piece_matrix[py][px] != 0:
                     grid_x = x + px
                     grid_y = y + py
 
-                    # Check the space directly below this block if it exists within grid bounds
                     if grid_y + 1 < GRID_HEIGHT:
-                        # In the current grid, the space below the block is empty
                         if current_grid[grid_y + 1][grid_x] == 0:
-                            # In the previous grid, there was no block directly above this empty space
-                            # (i.e., the space was already empty or it was the top of the grid)
                             for row in range(grid_y + 1):
-                                if previous_grid[row][grid_x] != 0:  # There was something above it before
+                                if previous_grid[row][grid_x] != 0:
                                     break
                             else:
-                                # If there was nothing above this space in the previous grid, it's a new hole
                                 new_holes += 1
 
         return new_holes
