@@ -1,118 +1,135 @@
+import heapq
+
 import numpy as np
 import random
 from collections import deque
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.optimizers import Adam
-# from BaseAgent import BaseAgent
 from RewardSystem import RewardSystem
 
 
-class DQLAgent():
-    def __init__(self, state_size=209, num_final_states=1):
+class DQLAgent:
+    def __init__(self, state_size=209, num_final_states=1, gamma=0.995, epsilon=1, epsilon_decay=0.95, batch_size=120):
+        self.generation = 0
         self.state_size = state_size
         self.output = num_final_states
-        self.gamma = 0.95
+        self.gamma = gamma
         self.Qvalue = deque(maxlen=10000)
-        self.epsilon = 1
-        self.epsilon_min = 0.01
-        self.epsilon_decay = 0.95
+        self.epsilon = epsilon
+        self.epsilon_min = 0
+        self.batch_size = batch_size
+        self.epsilon_decay = epsilon_decay
         self.learning_rate = 0.001
-        self.model = self.build_model(num_final_states)
+        self.model = self.build_model()
         self.reward_system = RewardSystem()
 
-    def build_model(self, output_size):
-        model = Sequential([
-            Dense(150, activation='relu'),
-            Dense(120, activation='relu'),
-            Dense(output_size, activation='linear')  # Output size matches the number of final states
-        ])
+    def build_model(self):
+        """
+            Builds and compiles the neural network model.
+            Returns:
+                Compiled Keras Sequential model.
+        """
+        model = Sequential()
+        model.add(Dense(32, activation='relu'))
+        for i in range(1, 3):
+            model.add(Dense(32, activation='relu'))
+        model.add(Dense(1, activation='linear'))
         model.compile(loss='mse', optimizer=Adam(learning_rate=self.learning_rate))
         return model
 
-    def update_agent(self, state, next_state, done, cleared_lines):
-        reward = self.reward_system.calculate_reward(next_state.grid, cleared_lines)
+    def update_agent(self, state, next_state, done):
+        """
+            Updates agent's experience (state, next_state, reward, done).
+        """
+        reward = self.reward_system.calculate_reward(next_state)
         self.Qvalue.append((state, next_state, reward, done))
 
-    def choose_best_final_state(self, current_state, possible_final_states):
-        if np.random.rand() <= self.epsilon:
-            return possible_final_states[np.random.randint(len(possible_final_states))]
-        else:
-            # Convert current state to vector
-            state_vector = self.convarte_state_to_vector(current_state)
-            # Append each possible final state to the current state for prediction
-            inputs = np.array(
-                [np.concatenate([state_vector, self.convarte_state_to_vector(final_state)]) for final_state in
-                 possible_final_states])
-            # Predict the values of all possible final states
-            state_values = self.model.predict(inputs)
-            # Select the best final state based on predicted values
-            best_index = np.argmax(state_values)
-            return possible_final_states[best_index]
+    def predict_value(self, state):
+        """
+           Predicts the score for a certain state
+        """
+        return self.model.predict(state, verbose=0)[0]
 
-    def train(self, batch_size=10):
-        minibatch = random.sample(self.Qvalue, min(len(self.Qvalue), batch_size))
-        for state, final_state, reward, done in minibatch:
-            input_vector = np.concatenate(
-                [self.convarte_state_to_vector(state), self.convarte_state_to_vector(final_state)])
-            target = reward if done else reward + self.gamma * np.max(
-                self.model.predict(input_vector.reshape(1, -1))[0])
-            target_f = self.model.predict(input_vector.reshape(1, -1))
-            target_f[0][0] = target  # Only one output, the value of the final state
-            self.model.fit(input_vector.reshape(1, -1), target_f, epochs=1, verbose=0)
+    def choose_best_final_state(self, possible_final_states):
+        """
+            Chooses the best final state based on predicted values or randomly (epsilon-greedy).
+        """
+        max_value = None
+        best_state = None
+
+        if random.random() <= self.epsilon:
+            return random.choice(list(possible_final_states))
+        else:
+            for state in possible_final_states:
+                states_vector = self.convarte_state_to_vector(state)
+
+                # Ensure the input is of shape (1, 5) for prediction
+                states_vector = states_vector.reshape(1, -1)
+
+                value = self.predict_value(states_vector)
+
+                if not max_value or value > max_value:
+                    max_value = value
+                    best_state = state
+
+        return best_state
+
+    def train(self, batch_size=64, epochs=1):
+        """
+            Trains the agent using experience replay with batch updates
+        """
+        batch_size = self.batch_size
+
+        # Ensure the batch size does not exceed the memory size and Proceed only if there is enough memory to start
+        # training.
+        if batch_size > len(self.Qvalue) or len(self.Qvalue) < batch_size:
+            return
+
+        batch = random.sample(self.Qvalue, batch_size)
+        # batch = heapq.nlargest(batch_size, self.Qvalueue, key=lambda memory: memory[2])
+        x, y = self.build_training_batch(batch)
+
+        self.model.fit(np.array(x), np.array(y), batch_size=batch_size, epochs=epochs, verbose=0)
+
+        # Update epsilon to reduce exploration over time
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
+        # if self.epsilon < 0.02:
+        #     self.epsilon = 0.06
 
-    def encode_grid(self, grid):
+    def build_training_batch(self, batch):
         """
-        Converts the Tetris grid into a binary matrix. Each cell is represented as 0 if it's empty and 1 if it's occupied.
-        This representation simplifies the understanding of the grid's occupancy state for the neural network.
-
-        Returns:
-        - A flattened 1D numpy array representing the current state of the grid.
+        Builds the training batch data (input states and target Q-values).
         """
-        return np.array([[1 if cell != 0 else 0 for cell in row] for row in grid]).flatten()
+        next_states = np.array([self.convarte_state_to_vector(x[1]) for x in batch]).reshape(len(batch), 5)
+        next_qs = self.model.predict(next_states)
 
-    def encode_tetrimino(self, tetrimino_grid, x_pos, y_pos, shape, grid_width, grid_height):
-        """
-        Encodes the Tetrimino's grid and position into a normalized form suitable for neural network input.
+        x, y = [], []
+        for i, (state, next_state, reward, done) in enumerate(batch):
+            state_vector = self.convarte_state_to_vector(state).reshape(1, 5)
+            target_qs = self.model.predict(state_vector)[0]
 
-        Parameters:
-        - tetrimino_grid: 2D list representing the Tetrimino's shape on the grid
-        - position: Tuple (x, y) representing the Tetrimino's position on the game grid
-        - grid_width: Width of the game grid
-        - grid_height: Height of the game grid
+            # Bellman equation to update Q-values
+            target_qs[0] = reward if done else reward + self.gamma * np.max(next_qs[i])
 
-        Returns:
-        - A numpy array containing the normalized position and flattened grid shape of the Tetrimino.
-        """
-        normalized_x = x_pos / grid_width
-        normalized_y = y_pos / grid_height
+            x.append(state_vector.flatten())
+            y.append(target_qs)
 
-        # Flatten the Tetrimino grid
-        flat_tetrimino = np.array(tetrimino_grid).flatten()
-        if len(flat_tetrimino) < 6:
-            flat_tetrimino = np.concatenate((flat_tetrimino, np.zeros(6 - len(flat_tetrimino))))
-
-        # Combine normalized position and flattened Tetrimino grid into a single array
-        encoded_tetrimino = np.concatenate(([normalized_x, normalized_y, shape], flat_tetrimino))
-
-        return encoded_tetrimino
+        return x, y
 
     def convarte_state_to_vector(self, state):
         """
-        Combines the grid state, current tetrimino state, and next tetrimino state into a single state vector.
-        This comprehensive state vector is then used by the DQL agent to make decisions.
-
-        Returns:
-        - A concatenated numpy array of the grid state, current tetrimino state, and next tetrimino state.
+        Computes and returns only the grid features as a state vector.
         """
         grid = state.grid
-        tetrimino = state.current_tetrimino
-        tetrimino_x_pos = tetrimino["x"]
-        tetrimino_y_pos = tetrimino["y"]
-        tetrimino_shape = ord(tetrimino["shape"])
-        grid_state = self.encode_grid(grid)
-        current_tetrimino_state = self.encode_tetrimino(tetrimino["matrix"], tetrimino_x_pos, tetrimino_y_pos,
-                                                        tetrimino_shape, len(grid), len(grid[0]))
-        return np.concatenate([grid_state, current_tetrimino_state])
+
+        grid_features = [
+            self.reward_system.calculate_holes(grid),
+            self.reward_system.calculate_bumpiness(grid),
+            self.reward_system.calculate_aggregate_height(grid),
+            self.reward_system.calculate_highest_point(grid),
+            self.reward_system.calculate_clear_lines(grid),
+            # self.reward_system.calculate_etp(state)
+        ]
+        return np.array(grid_features)

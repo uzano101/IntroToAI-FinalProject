@@ -1,3 +1,5 @@
+import csv
+import time
 import pygame
 import random
 from DQLAgent import DQLAgent
@@ -12,9 +14,9 @@ GENETIC_AGENT = "GENETIC"
 GRID_WIDTH = 10
 GRID_HEIGHT = 20
 BLOCK_SIZE = 25
-CUBE_SIZE = 20
+CUBE_SIZE = 24
 FRAME_WIDTH = 4
-INTERNAL_PADDING = 2
+INTERNAL_PADDING = 1
 UI_WIDTH = 260
 
 # Calculated dimensions
@@ -64,6 +66,82 @@ SCORES = {
     4: 1200
 }
 
+# Lego Theme Colors
+LEGO_COLORS = [(233, 30, 99), (33, 150, 243), (255, 193, 7), (76, 175, 80), (255, 87, 34)]
+BACKGROUND_COLOR = (240, 240, 240)  # Light grey background like a Lego baseplate
+TEXT_COLOR = (0, 0, 0)  # Black text for contrast
+OUTLINE_COLOR = (0, 0, 0)  # Black for outlines
+
+# Tetrimino colors (changed to Lego colors)
+COLORS = {
+    'I': LEGO_COLORS[0],
+    'J': LEGO_COLORS[1],
+    'L': LEGO_COLORS[2],
+    'O': LEGO_COLORS[3],
+    'S': LEGO_COLORS[4],
+    'T': LEGO_COLORS[0],
+    'Z': LEGO_COLORS[1],
+}
+
+# Fonts
+headline_font = pygame.font.SysFont('Bebas Neue', 80)
+small_font = pygame.font.SysFont('Bebas Neue', 35, bold=True)
+
+# Load Lego Background Image
+lego_background_image = pygame.image.load('backgroung.jpg')
+
+
+# Function to draw the background image to fit the screen
+def draw_background(screen):
+    screen.blit(pygame.transform.scale(lego_background_image, (SCREEN_WIDTH, SCREEN_HEIGHT)), (0, 0))
+
+# Button class for handling buttons like Home and Exit
+class Button:
+    def __init__(self, text, x, y, width, height, color, hover_color, action=None):
+        self.text = text
+        self.rect = pygame.Rect(x, y, width, height)
+        self.color = color
+        self.hover_color = hover_color
+        self.current_color = color
+        self.action = action
+
+    def draw(self, screen):
+        pygame.draw.rect(screen, self.current_color, self.rect, border_radius=5)  # Rounded corners
+        pygame.draw.rect(screen, OUTLINE_COLOR, self.rect, 3, border_radius=5)  # Black outline
+        text_surf = small_font.render(self.text, True, TEXT_COLOR)
+        screen.blit(text_surf, (self.rect.x + (self.rect.width - text_surf.get_width()) // 2,
+                                self.rect.y + (self.rect.height - text_surf.get_height()) // 2))
+
+    def is_hovered(self, pos):
+        return self.rect.collidepoint(pos)
+
+    def update(self, pos):
+        if self.is_hovered(pos):
+            self.current_color = self.hover_color
+        else:
+            self.current_color = self.color
+
+    def check_click(self, pos):
+        if self.is_hovered(pos) and self.action:
+            self.action()
+
+exit_game_flag = False
+
+# Actions for the buttons
+# def go_to_home():
+#     global go_to_home_flag
+#     go_to_home_flag = True
+#     print("Go to Home:  " + str(go_to_home_flag))
+
+
+def exit_game():
+    global exit_game_flag
+    exit_game_flag = True  # Set flag to exit the game
+
+
+# Create Home and Exit buttons
+
+exit_button = Button('Exit', SCREEN_WIDTH - 180, SCREEN_HEIGHT - 45, 80, 40, LEGO_COLORS[0], (244, 67, 54), exit_game)
 
 class Tetris:
     def __init__(self, agent):
@@ -73,12 +151,12 @@ class Tetris:
         else:
             self.agent = DQLAgent()
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-        pygame.display.set_caption('Tetris')
+        pygame.display.set_caption('Tetris Lego Theme')
         self.current_tetrimino = None
         self.next_tetrimino = None
         self.continue_playing = False
         self.game_over = False
-        self.font = pygame.font.Font(None, 36)
+        self.font = small_font
         self.game_counter = 0
         self.previous_state = None
         self.current_state = None
@@ -88,9 +166,30 @@ class Tetris:
         self.score = 0
         self.level = 0
         self.last_level = 0
-        self.generation = 0
+        self.level_at_999999 = 0
+        # New variables for statistics
+        self.statistics = []
+        self.start_time = time.time()
+        self.num_tetriminoes_dropped = 0
+        self.num_moves = 0
+
         self.reset_game()
 
+    def export_statistics_to_csv(self):
+        """Exports the current game statistics to a CSV file."""
+        filename = f"tetris_game_statistics.csv"
+        try:
+            with open(filename, mode='w', newline='') as file:
+                writer = csv.writer(file)
+                # Write the header
+                writer.writerow(["Game Number", "Score", "Lines Cleared", "Level", "Reward", "Total Time Played (s)",
+                                 "Tetriminoes Dropped", "Moves Made", "Generation", "Weights", "LevelAt999999"])
+                # Write the game statistics
+                for stat in self.statistics:
+                    writer.writerow(stat)
+            print(f"Game statistics exported to {filename}")
+        except PermissionError:
+            print("Please close the file before continuing.")
 
     def reset_game(self):
         self.grid = [[0 for _ in range(GRID_WIDTH)] for _ in range(GRID_HEIGHT)]
@@ -104,7 +203,7 @@ class Tetris:
         self.level = 1
         self.lines_cleared = 0
         self.speed = 200  # Milliseconds per fall
-        self.game_counter = self.game_counter + 1
+        self.game_counter += 1
         self.next_tetrimino = self.get_random_tetrimino()
         self.spawn_tetrimino()
         self.current_state = self.get_current_state()  # Save the current state
@@ -126,6 +225,10 @@ class Tetris:
     def spawn_tetrimino(self):
         self.current_tetrimino = self.next_tetrimino
         self.next_tetrimino = self.get_random_tetrimino()
+        if self.check_collision(self.current_tetrimino['x'], self.current_tetrimino['y'],
+                                self.current_tetrimino['matrix']):
+            self.game_over = True
+            return
         self.get_next_tetrimino_place_by_agent()
         self.current_state = self.get_current_state()  # Update the current state
 
@@ -141,6 +244,7 @@ class Tetris:
         return False
 
     def lock_tetrimino(self):
+        """Lock the current tetrimino onto the grid and check its isolation properties."""
         for y, row in enumerate(self.current_tetrimino['matrix']):
             for x, cell in enumerate(row):
                 if cell:
@@ -175,13 +279,12 @@ class Tetris:
             self.current_tetrimino['x'] = new_x
             self.current_tetrimino['y'] = new_y
             self.current_state = self.get_current_state()
+            self.num_moves += 1  # Increment move count
             return True
-        elif dy == 1:
+        elif dy == 1:  # Check if the tetrimino has landed
             self.lock_tetrimino()
-            self.current_state = self.get_current_state()
-            return False
         self.current_state = self.get_current_state()
-        return True
+        return False
 
     def draw_grid(self):
         for y in range(GRID_HEIGHT):
@@ -192,7 +295,7 @@ class Tetris:
                 color = self.grid[y][x]
                 if color:
                     pygame.draw.rect(self.screen, color, rect)
-                    pygame.draw.rect(self.screen, WHITE, rect, 2)  # Add white outline around the placed blocks
+                    pygame.draw.rect(self.screen, OUTLINE_COLOR, rect, 2)  # Add black outline for Lego block effect
 
     def draw_tetrimino(self):
         matrix = self.current_tetrimino['matrix']
@@ -206,7 +309,7 @@ class Tetris:
                             self.current_tetrimino['y'] + y) * BLOCK_SIZE + CUBE_OFFSET
                     rect = pygame.Rect(rect_x, rect_y, CUBE_SIZE, CUBE_SIZE)
                     pygame.draw.rect(self.screen, color, rect)
-                    pygame.draw.rect(self.screen, WHITE, rect, 2)  # Add white outline around the active blocks
+                    pygame.draw.rect(self.screen, OUTLINE_COLOR, rect, 2)  # Add black outline for Lego block effect
 
     def draw_next_tetrimino(self):
         matrix = self.next_tetrimino['matrix']
@@ -220,74 +323,86 @@ class Tetris:
                     rect_y = start_y + y * BLOCK_SIZE + CUBE_OFFSET
                     rect = pygame.Rect(rect_x, rect_y, CUBE_SIZE, CUBE_SIZE)
                     pygame.draw.rect(self.screen, color, rect)
-                    pygame.draw.rect(self.screen, WHITE, rect, 2)  # Add white outline around the next piece blocks
+                    pygame.draw.rect(self.screen, OUTLINE_COLOR, rect,
+                                     2)  # Add black outline around the next piece blocks
 
     def draw_frame(self):
+        draw_background(self.screen)  # Draw the Lego-themed background
         rect = pygame.Rect(0, 0, GRID_PIXEL_WIDTH + 2 * FRAME_WIDTH, GRID_PIXEL_HEIGHT + 2 * FRAME_WIDTH)
-        pygame.draw.rect(self.screen, WHITE, rect)
+        pygame.draw.rect(self.screen, OUTLINE_COLOR, rect, 5)  # Black border around the grid
         inner_rect = pygame.Rect(FRAME_WIDTH, FRAME_WIDTH, GRID_PIXEL_WIDTH, GRID_PIXEL_HEIGHT)
-        pygame.draw.rect(self.screen, BLACK, inner_rect)
+        pygame.draw.rect(self.screen, BACKGROUND_COLOR, inner_rect)  # Light grey inner grid background
 
     def draw_ui(self):
         # Display score
-        score_text = self.font.render('Score:', True, WHITE)
+        score_text = self.font.render('Score:', True, TEXT_COLOR)
         self.screen.blit(score_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 50))
-        score_value = self.font.render(f'{self.score}', True, WHITE)
+        score_value = self.font.render(f'{self.score}', True, TEXT_COLOR)
         self.screen.blit(score_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 100, 50))
 
         # Display level
-        level_text = self.font.render('Level:', True, WHITE)
+        level_text = self.font.render('Level:', True, TEXT_COLOR)
         self.screen.blit(level_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 90))
-        level_value = self.font.render(f'{self.level}', True, WHITE)
+        level_value = self.font.render(f'{self.level}', True, TEXT_COLOR)
         self.screen.blit(level_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 100, 90))
 
         # Display next tetrimino
-        next_text = self.font.render('Next:', True, WHITE)
+        next_text = self.font.render('Next:', True, TEXT_COLOR)
         self.screen.blit(next_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 130))
 
         # Display game counter
-        game_counter_text = self.font.render('Games:', True, WHITE)
+        game_counter_text = self.font.render('Games:', True, TEXT_COLOR)
         self.screen.blit(game_counter_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 230))
-        game_counter_value = self.font.render(f'{self.game_counter}', True, WHITE)
+        game_counter_value = self.font.render(f'{self.game_counter}', True, TEXT_COLOR)
         self.screen.blit(game_counter_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 120, 230))
 
         # Display lines cleared
-        lines_text = self.font.render('Lines:', True, WHITE)
+        lines_text = self.font.render('Lines:', True, TEXT_COLOR)
         self.screen.blit(lines_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 280))
-        lines_value = self.font.render(f'{self.lines_cleared}', True, WHITE)
+        lines_value = self.font.render(f'{self.lines_cleared}', True, TEXT_COLOR)
         self.screen.blit(lines_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 100, 280))
 
         # Display high score
-        high_score_text = self.font.render('High Score:', True, WHITE)
+        high_score_text = self.font.render('High Score:', True, TEXT_COLOR)
         self.screen.blit(high_score_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 330))
-        high_score_value = self.font.render(f'{self.high_score}', True, WHITE)
-        self.screen.blit(high_score_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 160, 330))
+        high_score_value = self.font.render(f'{self.high_score}', True, TEXT_COLOR)
+        self.screen.blit(high_score_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 360))
 
         # Display highest level
-        highest_level_text = self.font.render('Highest Level:', True, WHITE)
-        self.screen.blit(highest_level_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 380))
-        highest_level_value = self.font.render(f'{self.last_level}', True, WHITE)
-        self.screen.blit(highest_level_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 190, 380))
+        highest_level_text = self.font.render('Highest Level:', True, TEXT_COLOR)
+        self.screen.blit(highest_level_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 390))
+        highest_level_value = self.font.render(f'{self.last_level}', True, TEXT_COLOR)
+        self.screen.blit(highest_level_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 190, 390))
 
         # Conditionally display generation if the agent is GeneticAgent
         if isinstance(self.agent, GeneticAgent):
-            generation_text = self.font.render('Generation:', True, WHITE)
-            self.screen.blit(generation_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 430))
-            generation_value = self.font.render(f'{self.agent.generation}', True, WHITE)
-            self.screen.blit(generation_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 170, 430))
+            generation_text = self.font.render('Generation:', True, TEXT_COLOR)
+            self.screen.blit(generation_text, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 20, 440))
+            generation_value = self.font.render(f'{self.agent.generation}', True, TEXT_COLOR)
+            self.screen.blit(generation_value, (GRID_PIXEL_WIDTH + FRAME_WIDTH + 170, 440))
 
     def get_next_tetrimino_place_by_agent(self):
-        if self.chosen_agent == DQL_AGENT:
-            lock_state = self.agent.choose_best_final_state(self.current_state, self.get_all_successor_states())
-        else:
-            lock_state = self.agent.choose_best_final_state(self.get_all_successor_states())
+        lock_state = self.agent.choose_best_final_state(self.get_all_successor_states())
         self.previous_state = self.current_state
         self.set_tetrimino_to_state(lock_state)
 
     def handle_events_and_move(self):
+        global go_to_home_flag, exit_game_flag
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return True
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_p:
+                    # Export game statistics when 'P' is pressed
+                    self.export_statistics_to_csv()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_pos = pygame.mouse.get_pos()
+                exit_button.check_click(mouse_pos)
+
+        if exit_game_flag:
+            pygame.quit()
+
         self.hard_drop()
         self.current_state = self.get_current_state()
 
@@ -303,34 +418,43 @@ class Tetris:
 
     def update_agent_thread(self):
         if self.previous_state is not None:
-            self.agent.update_agent(self.previous_state, self.current_state, False, None)
+            self.agent.update_agent(self.previous_state, self.current_state, self.game_over)
 
     def refresh_game(self):
-        self.screen.fill(BLACK)
+        self.screen.fill(BACKGROUND_COLOR)
         self.draw_frame()
         self.draw_grid()
         self.draw_tetrimino()
         self.draw_ui()
         self.draw_next_tetrimino()
+
+        # Draw the Home and Exit buttons
+        mouse_pos = pygame.mouse.get_pos()
+        exit_button.update(mouse_pos)
+        exit_button.draw(self.screen)
+
         pygame.display.flip()
 
     def run(self):
-        while not self.continue_playing:
-            if not self.game_over and self.score <= 999999:
+        while not self.continue_playing and not exit_game_flag:
+            if not self.game_over and self.score <= 99999999:
+                if self.level_at_999999 == 0 and self.score >= 99999999:
+                    self.level_at_999999 = self.level
                 self.current_state = self.get_current_state()
                 self.continue_playing = self.handle_events_and_move()
                 self.game_over = self.is_game_over()
                 self.refresh_game()
-                if self.chosen_agent is DQL_AGENT:
+                if self.chosen_agent == DQL_AGENT:
                     self.update_agent_thread()
                 self.finish_turn_and_prepere_to_next_one()
             else:
+                self.record_game()
                 self.game_over = False
-                self.score = min(self.score, 999999)
-                if self.chosen_agent is DQL_AGENT:
+                self.score = min(self.score, 99999999)
+                if self.chosen_agent == DQL_AGENT:
                     self.agent.train()
                 else:
-                    self.agent.train(self.current_state, self.lines_cleared)
+                    self.agent.train(self.score, self.lines_cleared, self.level)
                 self.previous_state = None
                 self.reset_game()
         pygame.quit()
@@ -338,12 +462,33 @@ class Tetris:
     def finish_turn_and_prepere_to_next_one(self):
         self.renew_and_check_lines()
         self.spawn_tetrimino()
+        self.num_tetriminoes_dropped += 1
+
+    def record_game(self):
+        # Record game statistics at the end of each turn
+        elapsed_time = time.time() - self.start_time
+        weights = self.agent.current_weights if self.chosen_agent == GENETIC_AGENT else []
+        self.statistics.append([
+            self.game_counter,
+            self.score,
+            self.lines_cleared,
+            self.level,
+            round(elapsed_time, 2),
+            self.num_tetriminoes_dropped,
+            self.num_moves,
+            self.agent.generation,
+            weights,
+            self.level_at_999999
+        ])
+        # Reset some statistics for the next game
+        self.num_tetriminoes_dropped = 0
+        self.num_moves = 0
+        self.start_time = time.time()
 
     def is_game_over(self):
         for x in range(len(self.grid[0])):
             if self.grid[0][x] != 0:
                 return True
-
 
     def rotate_matrix(self, matrix, times=1):
         # Rotate the tetrimino matrix 90 degrees clockwise `times` number of times
@@ -397,7 +542,6 @@ class Tetris:
                         grid[grid_y][grid_x] = color
 
     def set_tetrimino_to_state(self, lock_state):
-
         desired_x = lock_state.current_tetrimino['x']
         desired_matrix = lock_state.current_tetrimino['matrix']
 
@@ -431,5 +575,5 @@ class State:
 
 
 if __name__ == '__main__':
-    game = Tetris(GENETIC_AGENT)
+    game = Tetris(GENETIC_AGENT)  # Change agent type to run with different agents
     game.run()
