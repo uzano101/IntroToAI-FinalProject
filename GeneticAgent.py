@@ -43,7 +43,7 @@ class GeneticAgent():
                 best_state = state
         return best_state
 
-    def calculate_fitness(self, score, cleared_lines, level):
+    def calculate_fitness(self, score):
         """ calculate the reward for the final grid state. """
         return score
 
@@ -81,10 +81,10 @@ class GeneticAgent():
                 weights[weight] *= random.uniform(0.8, 1.2)
         return weights
 
-    def train(self, score, cleared_lines, level):
+    def train(self, score):
         """ Train the agent with the final grid state. """
         if self.item_game == 2:
-            avg_fitness = (self.calculate_fitness(score, cleared_lines, level) + self.total_item_fitness) / 3
+            avg_fitness = (self.calculate_fitness(score) + self.total_item_fitness) / 3
             self.population[self.current_weights_index][1] = avg_fitness
             self.total_item_fitness = 0
             self.item_game = 0
@@ -95,5 +95,5 @@ class GeneticAgent():
                 self.current_weights_index = 0
             self.current_weights = self.population[self.current_weights_index][0]
         else:
-            self.total_item_fitness += self.calculate_fitness(score, cleared_lines, level)
+            self.total_item_fitness += self.calculate_fitness(score)
             self.item_game += 1

@@ -389,8 +389,8 @@ class Tetris:
             self.refresh_game()
             pygame.time.delay(5)
 
-    def update_agent_thread(self):
-        """ Updates the agent in a separate thread. """
+    def update_agent(self):
+        """ Updates the agent """
         if self.previous_state is not None:
             self.agent.update_agent(self.previous_state, self.current_state, self.game_over)
 
@@ -418,7 +418,7 @@ class Tetris:
                 self.game_over = self.is_game_over()
                 self.refresh_game()
                 if self.chosen_agent == DQL_AGENT:
-                    self.update_agent_thread()
+                    self.update_agent()
                 self.finish_turn_and_prepere_to_next_one()
             else:
                 self.record_game()
@@ -427,7 +427,7 @@ class Tetris:
                 if self.chosen_agent == DQL_AGENT:
                     self.agent.train()
                 else:
-                    self.agent.train(self.score, self.lines_cleared, self.level)
+                    self.agent.train(self.score)
                 self.previous_state = None
                 self.reset_game()
         pygame.quit()

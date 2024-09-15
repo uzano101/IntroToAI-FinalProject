@@ -82,7 +82,7 @@ class DQLAgent:
         return x, y
 
     def convarte_state_to_vector(self, state):
-        """ Computes and returns only the grid features as a state vector. """
+        """ Change the state to vector by the grid features. """
         grid = state.grid
         grid_features = [
             self.reward_system.calculate_holes(grid),
