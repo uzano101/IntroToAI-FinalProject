@@ -1,3 +1,5 @@
+Here is an updated version of your project document with a results table added:
+
 # IntroToAI - FinalProject - Tetris AI
 
 ## Overview
@@ -10,7 +12,7 @@ This project implements AI agents for playing the classic game of Tetris. Our go
 - Numpy
 - Tensorflow
 - Pygame
-  
+
 ## Installation
 
 To run the project, follow these steps:
@@ -18,14 +20,17 @@ To run the project, follow these steps:
 1. Clone the repository:
    ```bash
    git clone https://github.com/uzano101/tetris-ai-project.git
+   ```
 
 2. Install requirements:
    ```bash
    pip install -r requirements.txt
+   ```
 
-4. Run the project:
+3. Run the project:
    ```bash
    python Main.py
+   ```
 
 ## Models
 1. **Genetic Algorithm**:
@@ -36,10 +41,16 @@ To run the project, follow these steps:
    - Uses a neural network to predict the best next state, balancing exploration and exploitation.
    - The agent learns from experience by storing game states and updating the Q-values using the Bellman Equation.
 
-### Implemantation
+### Implementation
 - **Genetic Algorithm**: Optimizes weights for heuristics over multiple generations.
 - **DQL Agent**: Learns from game experience and predicts the optimal move for each state.
 
 ### Results
 
+| Result            | Genetic Algorithm | Deep Q-Learning (DQL) |
+|-------------------|-------------------|-----------------------|
+| **High Score**    | 56,224,940        | 2,187,300             |
+| **Lines Cleared** | 4,964         | 877                   |
+| **Level**         | 497               | 88                    |
 
+This table summarizes the performance of both models in terms of high score, lines cleared, and levels achieved.
