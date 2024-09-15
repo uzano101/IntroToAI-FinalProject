@@ -3,6 +3,7 @@ from RewardSystem import RewardSystem
 
 
 class GeneticAgent():
+    """ Class that represents a genetic algorithm agent. """
     def __init__(self, population_size=10, mutation_rate=0.1, crossover_rate=0.5):
         self.population_size = population_size
         self.mutation_rate = mutation_rate

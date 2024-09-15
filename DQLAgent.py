@@ -89,6 +89,6 @@ class DQLAgent:
             self.reward_system.calculate_bumpiness(grid),
             self.reward_system.calculate_aggregate_height(grid),
             self.reward_system.calculate_highest_point(grid),
-            self.reward_system.calculate_clear_lines(grid)
+            self.reward_system.calculate_clear_lines(grid),
         ]
         return np.array(grid_features)

@@ -11,14 +11,12 @@ DEFAULT_WEIGHTS = {'aggregate_height': 1.0216828929347057,
 
 class RewardSystem:
     """ Class that calculates the reward for a given state. """
-
     def calculate_reward(self, current_state, previous_state=None, weights=None):
         """
            Calculates a reward based on the current and previous states of a Tetris game grid.
         """
         if weights is None:
             weights = DEFAULT_WEIGHTS
-
         aggregate_height = self.calculate_aggregate_height(current_state.grid)
         cleared_lines = self.calculate_clear_lines(current_state.grid)
         current_holes = self.calculate_holes(current_state.grid)
@@ -27,7 +25,6 @@ class RewardSystem:
         neighbours_score = self.calculate_neighbours(current_state)
         new_holes = self.calculate_new_holes(previous_state.grid, current_state.grid,
                                              current_state.current_tetrimino) if previous_state is not None else 0
-
         total_reward = (
                 (weights['complete_lines'] * cleared_lines)
                 - (weights['aggregate_height'] * aggregate_height)
@@ -39,7 +36,6 @@ class RewardSystem:
             total_reward -= weights['new_holes'] * new_holes
         if 'neighbours' in weights:
             total_reward += weights['neighbours'] * neighbours_score
-
         return total_reward
 
     def calculate_aggregate_height(self, grid):
@@ -77,16 +73,13 @@ class RewardSystem:
         shape_matrix = locked_shape_info['matrix']
         shape_x, shape_y = locked_shape_info['x'], locked_shape_info['y']
         isolation_score = 0
-
         directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
-
         for y in range(len(shape_matrix)):
             for x in range(len(shape_matrix[0])):
                 if shape_matrix[y][x] != 0:
                     by, bx = shape_y + y, shape_x + x
                     empty_neighbors = 0
                     total_neighbors = 0
-
                     for dy, dx in directions:
                         ny, nx = by + dy, bx + dx
                         if 0 <= ny < GRID_HEIGHT and 0 <= nx < GRID_WIDTH:
@@ -96,7 +89,6 @@ class RewardSystem:
 
                     if total_neighbors > 0 and empty_neighbors >= (total_neighbors * 2 / 3):
                         isolation_score += 1
-
         return isolation_score
 
     def calculate_clear_lines(self, grid):
@@ -112,7 +104,6 @@ class RewardSystem:
         part_height = len(piece_matrix)
         part_width = len(piece_matrix[0])
         counter = 0
-
         for py in range(-1, part_height + 1):
             for px in range(-1, part_width + 1):
                 by, bx = y + py, x + px
@@ -121,13 +112,11 @@ class RewardSystem:
                     is_full = True
                 else:
                     is_full = False
-
                 if is_full:
                     for dy, dx in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                         temp_y, temp_x = py + dy, px + dx
                         if 0 <= temp_y < part_height and 0 <= temp_x < part_width and piece_matrix[temp_y][temp_x]:
                             counter += 1
-
         return counter
 
     def calculate_new_holes(self, previous_grid, current_grid, tetrimino):
@@ -138,13 +127,11 @@ class RewardSystem:
         y = tetrimino['y']
         part_height = len(piece_matrix)
         part_width = len(piece_matrix[0])
-
         for py in range(part_height):
             for px in range(part_width):
                 if piece_matrix[py][px] != 0:
                     grid_x = x + px
                     grid_y = y + py
-
                     if grid_y + 1 < GRID_HEIGHT:
                         if current_grid[grid_y + 1][grid_x] == 0:
                             for row in range(grid_y + 1):
@@ -152,5 +139,4 @@ class RewardSystem:
                                     break
                             else:
                                 new_holes += 1
-
         return new_holes
