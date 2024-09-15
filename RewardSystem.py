@@ -13,6 +13,9 @@ class RewardSystem:
     """ Class that calculates the reward for a given state. """
 
     def calculate_reward(self, current_state, previous_state=None, weights=None):
+        """
+           Calculates a reward based on the current and previous states of a Tetris game grid.
+        """
         if weights is None:
             weights = DEFAULT_WEIGHTS
 
@@ -22,7 +25,8 @@ class RewardSystem:
         current_bumpiness = self.calculate_bumpiness(current_state.grid)
         highest_point = self.calculate_highest_point(current_state.grid)
         etp_score = self.calculate_etp(current_state)
-        new_holes = self.calculate_new_holes(previous_state.grid, current_state.grid, current_state.current_tetrimino) if previous_state is not None else 0
+        new_holes = self.calculate_new_holes(previous_state.grid, current_state.grid,
+                                             current_state.current_tetrimino) if previous_state is not None else 0
 
         total_reward = (
                 (weights['complete_lines'] * cleared_lines)

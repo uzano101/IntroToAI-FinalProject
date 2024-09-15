@@ -9,9 +9,8 @@ from RewardSystem import RewardSystem
 
 class DQLAgent:
     """ Class that represents the Deep Q-Learning agent. """
-    def __init__(self, state_size=209, num_final_states=1, gamma=0.995, epsilon=1, epsilon_decay=0.95, batch_size=120):
+    def __init__(self, num_final_states=1, gamma=0.995, epsilon=1, epsilon_decay=0.95, batch_size=120):
         self.generation = 0
-        self.state_size = state_size
         self.output = num_final_states
         self.gamma = gamma
         self.Qvalue = deque(maxlen=10000)

@@ -18,7 +18,6 @@ class GeneticAgent():
 
     def initialize_population(self):
         """ initialize the first population with random values. """
-        # TODO: change base on our reward, and the size we want to give it to.
         population = []
         for i in range(self.population_size):
             weights = {
