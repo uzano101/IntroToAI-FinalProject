@@ -24,7 +24,7 @@ class RewardSystem:
         current_holes = self.calculate_holes(current_state.grid)
         current_bumpiness = self.calculate_bumpiness(current_state.grid)
         highest_point = self.calculate_highest_point(current_state.grid)
-        etp_score = self.calculate_etp(current_state)
+        neighbours_score = self.calculate_neighbours(current_state)
         new_holes = self.calculate_new_holes(previous_state.grid, current_state.grid,
                                              current_state.current_tetrimino) if previous_state is not None else 0
 
@@ -37,8 +37,8 @@ class RewardSystem:
         )
         if 'new_holes' in weights:
             total_reward -= weights['new_holes'] * new_holes
-        if 'etp_score' in weights:
-            total_reward += weights['etp_score'] * etp_score
+        if 'neighbours' in weights:
+            total_reward += weights['neighbours'] * neighbours_score
 
         return total_reward
 
@@ -103,8 +103,8 @@ class RewardSystem:
         """Calculate the number of lines that are fully filled with blocks."""
         return sum(1 for row in grid if 0 not in row)
 
-    def calculate_etp(self, state):
-        """Calculate the edge touching points (ETP) for the current tetrimino in the given state."""
+    def calculate_neighbours(self, state):
+        """Calculate the edge touching points (neighbours) for the current tetrimino in the given state."""
         grid = state.grid
         piece_matrix = state.current_tetrimino['matrix']
         x = state.current_tetrimino['x']
