@@ -54,3 +54,7 @@ To run the project, follow these steps:
 | **Level**         | 497               | 88                    |
 
 This table summarizes the performance of both models in terms of high score, lines cleared, and levels achieved.
+
+### Performances
+#### here are the scores of the two models over the game numbers. You can observ the upward trend lines of both models.
+![Result Graphs](results.jpeg)
