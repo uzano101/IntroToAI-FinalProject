@@ -1,2 +1,0 @@
-Game Number,Score,Lines Cleared,Level,Reward,Total Time Played (s),Tetriminoes Dropped,Moves Made,Generation,LevelAt999999,Weights
-1,280,7,1,4.88,56,507,1,0,"{'aggregate_height': 0.01830862824109525, 'complete_lines': 0.31554087956009114, 'holes': 0.22931472712772916, 'bumpiness': 0.9062177050889164, 'highest_point': 0.42457390440425613}"
